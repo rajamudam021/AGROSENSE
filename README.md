@@ -331,7 +331,7 @@ crop_site/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/U-ROHITH/Crop-Prediction.git
+git clone https://github.com/rajamudam021/AGROSENSE.git
 cd Crop-Prediction/crop_site
 ```
 
@@ -437,5 +437,5 @@ On first access to **Yield Predictor** (`/yield-predictor/`) and **Fertilizer Ad
 
 ## Author
 
-**Rohith U**
-[GitHub: U-ROHITH](https://github.com/U-ROHITH)
+**Raja**
+[GitHub: rajamudam021](https://github.com/rajamudam021)
