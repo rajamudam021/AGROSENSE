@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Farming Tips - AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <h2 class="fw-bold section-title mb-0">
+      <i class="fa-solid fa-lightbulb text-success me-2"></i>Farming Tips
+    </h2>
+    <p class="text-secondary mt-1">Expert agronomic tips and best practices for each crop.</p>
+  </div>
+
+  <!-- Search + Filter -->
+  <div class="card p-3 mb-4">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input type="text" id="cropSearch" class="form-control" placeholder="Search crop tips..." />
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex flex-wrap gap-1">
+          <a href="{% url 'farming_tips' %}"
+             class="btn btn-sm {% if not crop_filter %}btn-success{% else %}btn-outline-success{% endif %}">
+            All
+          </a>
+          {% for crop in all_crops %}
+            <a href="{% url 'farming_tips' %}?crop={{ crop }}"
+               class="btn btn-sm {% if crop_filter == crop %}btn-success{% else %}btn-outline-success{% endif %}">
+              {{ crop|capfirst }}
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tips Cards -->
+  {% if crop_data %}
+    <div class="row g-4" id="tipsGrid">
+      {% for crop_name, data in crop_data.items %}
+        <div class="col-md-6 col-lg-4 fade-in-scroll" data-searchable="{{ crop_name }} {{ data.season }}">
+          <div class="tips-card">
+            <!-- Crop Header -->
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div>
+                <h5 class="fw-bold mb-0">{{ crop_name|capfirst }}</h5>
+                <span class="season-badge badge-{{ data.season|lower }} mt-1 d-inline-block">
+                  {{ data.season }}
+                </span>
+              </div>
+              <div class="feature-icon" style="width:48px;height:48px;font-size:1.3rem;">
+                <i class="fa-solid fa-seedling"></i>
+              </div>
+            </div>
+
+            <!-- Tips List -->
+            <ul class="list-unstyled tips-list mb-3">
+              {% for tip in data.tips %}
+                <li class="d-flex gap-2 py-2 border-bottom" style="border-color:var(--border-color) !important;">
+                  <i class="fa-solid fa-check-circle text-success mt-1 flex-shrink-0" style="font-size:.8rem;"></i>
+                  <small>{{ tip }}</small>
+                </li>
+              {% empty %}
+                <li class="text-secondary small">No tips available.</li>
+              {% endfor %}
+            </ul>
+
+            <!-- Market Price -->
+            <div class="d-flex justify-content-between align-items-center mt-auto pt-2"
+                 style="border-top:1px solid var(--border-color);">
+              <small class="text-secondary">
+                <i class="fa-solid fa-indian-rupee-sign me-1"></i>
+                ~&#8377;{{ data.market_price }} / quintal
+              </small>
+              <small class="text-secondary">
+                <i class="fa-solid fa-scale-balanced me-1"></i>
+                {{ data.yield_per_hectare }} t/ha
+              </small>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+      <h5>No crops found</h5>
+      <p class="text-secondary">Try a different crop filter.</p>
+      <a href="{% url 'farming_tips' %}" class="btn btn-agro mt-2">Show All Crops</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

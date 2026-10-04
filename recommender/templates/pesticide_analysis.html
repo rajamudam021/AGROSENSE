@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Pesticide vs Yield Analysis — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-flask-vial text-success me-2"></i>Pesticide Usage vs Yield
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Does more pesticide actually increase yield? Pearson correlation analysis across
+        {{ total_records|default:"0" }} country-crop-year data points.
+      </p>
+    </div>
+    <a href="{% url 'trends' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-chart-line me-1"></i>India Trends
+    </a>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+  {% else %}
+
+  <!-- Overall correlation headline -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid var(--accent)!important;">
+        <div class="text-muted small fw-bold mb-1">Overall Correlation</div>
+        <div style="font-size:2.5rem;font-weight:900;
+                    color:{% if overall_corr > 0 %}#16a34a{% elif overall_corr < 0 %}#dc2626{% else %}#6b7280{% endif %};">
+          {{ overall_corr|floatformat:3 }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">Pearson r (all crops/countries)</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center">
+        <div class="text-muted small fw-bold mb-1">Data Points</div>
+        <div style="font-size:2.5rem;font-weight:900;color:#2563eb;">{{ total_records }}</div>
+        <div class="text-muted" style="font-size:.75rem;">country × crop × year</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center">
+        <div class="text-muted small fw-bold mb-1">Crops Analysed</div>
+        <div style="font-size:2.5rem;font-weight:900;color:#d97706;">{{ crops|length }}</div>
+        <div class="text-muted" style="font-size:.75rem;">unique crops</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center">
+        <div class="text-muted small fw-bold mb-1">Surprising Crops</div>
+        <div style="font-size:2.5rem;font-weight:900;color:#7c3aed;">
+          {{ top_negative|length }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">negative correlation crops</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- Top positive -->
+    <div class="col-md-6">
+      <div class="card p-3 h-100">
+        <h6 class="fw-bold mb-3" style="color:#16a34a;">
+          <i class="fa-solid fa-arrow-trend-up me-1"></i>More Pesticide → Higher Yield
+        </h6>
+        {% for crop, corr in top_positive %}
+        {% if corr is not None %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span style="min-width:120px;font-size:.82rem;font-weight:600;
+                       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ crop }}</span>
+          <div class="progress flex-grow-1" style="height:10px;">
+            <div class="progress-bar" style="width:{% widthratio corr 1 100 %}%;background:#16a34a;"></div>
+          </div>
+          <span style="min-width:46px;text-align:right;font-size:.82rem;font-weight:700;color:#16a34a;">
+            r={{ corr|floatformat:3 }}
+          </span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Top negative -->
+    <div class="col-md-6">
+      <div class="card p-3 h-100">
+        <h6 class="fw-bold mb-3" style="color:#dc2626;">
+          <i class="fa-solid fa-arrow-trend-down me-1"></i>More Pesticide → Lower Yield
+          <span class="badge ms-1" style="background:#fee2e2;color:#dc2626;font-size:.65rem;">Surprising!</span>
+        </h6>
+        {% for crop, corr in top_negative %}
+        {% if corr is not None %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span style="min-width:120px;font-size:.82rem;font-weight:600;
+                       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ crop }}</span>
+          <div class="progress flex-grow-1" style="height:10px;">
+            <div class="progress-bar" style="width:{% widthratio corr -1 100 %}%;background:#dc2626;"></div>
+          </div>
+          <span style="min-width:46px;text-align:right;font-size:.82rem;font-weight:700;color:#dc2626;">
+            r={{ corr|floatformat:3 }}
+          </span>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <div class="mt-2 p-2 rounded" style="background:#fee2e2;font-size:.75rem;color:#7f1d1d;">
+          <i class="fa-solid fa-lightbulb me-1"></i>
+          Negative correlation may reflect reactive pesticide use — farmers spray <em>more</em>
+          when crops are already struggling, or pesticide-reliant monocultures degrade soil over time.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global scatter chart -->
+  <div class="card p-3 mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <h6 class="fw-bold mb-0" style="color:var(--accent);">
+        <i class="fa-solid fa-circle-dot me-1"></i>Global Scatter: Pesticide Use vs Yield
+        <span class="text-muted fw-normal" style="font-size:.78rem;">(500 sample points)</span>
+      </h6>
+      <!-- Crop filter -->
+      <form method="GET" action="{% url 'pesticide_analysis' %}" class="d-flex gap-2">
+        <select name="crop" class="form-select form-select-sm" style="width:200px;" onchange="this.form.submit()">
+          <option value="">All crops</option>
+          {% for c in crops %}
+            <option value="{{ c }}" {% if selected_crop == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+    <div style="position:relative;height:320px;">
+      <canvas id="scatterChart"></canvas>
+    </div>
+    {% if crop_stats and selected_crop %}
+    <div class="mt-2 d-flex gap-3 flex-wrap" style="font-size:.82rem;">
+      <span><strong>Crop:</strong> {{ selected_crop }}</span>
+      <span><strong>r =</strong>
+        <span style="color:{% if crop_stats.corr > 0 %}#16a34a{% elif crop_stats.corr < 0 %}#dc2626{% else %}#6b7280{% endif %};">
+          {{ crop_stats.corr|floatformat:3 }}
+        </span>
+      </span>
+      <span><strong>n =</strong> {{ crop_stats.n }}</span>
+      <span><strong>Avg pesticide:</strong> {{ crop_stats.pest_avg }} T</span>
+      <span><strong>Avg yield:</strong> {{ crop_stats.yield_avg }} kg/ha</span>
+    </div>
+    {% endif %}
+    <div class="mt-1 text-muted" style="font-size:.73rem;">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      X-axis: pesticide use (tonnes, country total). Y-axis: crop yield (kg/ha).
+      Source: FAO pesticide data merged with yield_df.csv.
+    </div>
+  </div>
+
+  <!-- Country correlation table -->
+  {% if country_corrs %}
+  <div class="card p-3">
+    <h6 class="fw-bold mb-3" style="color:var(--accent);">
+      <i class="fa-solid fa-globe me-1"></i>Country-level Pesticide–Yield Correlation (top 15 by magnitude)
+    </h6>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size:.85rem;">
+        <thead style="font-size:.75rem;text-transform:uppercase;color:var(--text-muted);background:var(--bg-alt);">
+          <tr>
+            <th>Country</th>
+            <th>Correlation (r)</th>
+            <th>Interpretation</th>
+            <th class="text-end">Data Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for country, corr in country_corrs %}
+          {% if corr is not None %}
+          <tr>
+            <td class="fw-semibold">{{ country }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress" style="width:80px;height:8px;">
+                  {% if corr >= 0 %}
+                  <div class="progress-bar" style="width:{% widthratio corr 1 100 %}%;background:#16a34a;"></div>
+                  {% else %}
+                  <div class="progress-bar" style="width:{% widthratio corr -1 100 %}%;background:#dc2626;margin-left:auto;"></div>
+                  {% endif %}
+                </div>
+                <span class="fw-bold" style="color:{% if corr > 0.2 %}#16a34a{% elif corr < -0.2 %}#dc2626{% else %}#6b7280{% endif %};">
+                  {{ corr|floatformat:3 }}
+                </span>
+              </div>
+            </td>
+            <td>
+              {% if corr > 0.5 %}<span class="badge" style="background:#dcfce7;color:#166534;">Strong positive</span>
+              {% elif corr > 0.2 %}<span class="badge" style="background:#d1fae5;color:#065f46;">Moderate positive</span>
+              {% elif corr > -0.2 %}<span class="badge" style="background:#f3f4f6;color:#6b7280;">Weak / neutral</span>
+              {% elif corr > -0.5 %}<span class="badge" style="background:#fee2e2;color:#991b1b;">Moderate negative</span>
+              {% else %}<span class="badge" style="background:#fecaca;color:#7f1d1d;">Strong negative</span>
+              {% endif %}
+            </td>
+            <td class="text-end text-muted">—</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const SCATTER_RAW = {{ scatter_all_json|safe }};
+const CROP_SCATTER = {{ crop_scatter_json|safe }};
+const USE_CROP = CROP_SCATTER && CROP_SCATTER.length > 0;
+const pts = USE_CROP ? CROP_SCATTER : SCATTER_RAW;
+
+function isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; }
+const ACCENT = '#1c7a42';
+
+(function() {
+  const ctx = document.getElementById('scatterChart');
+  if (!ctx || !pts || !pts.length) return;
+
+  // Group by crop for multi-colour scatter (when showing all)
+  const crops = [...new Set(pts.map(p => p.crop || 'All'))].slice(0, 12);
+  const palette = ['#1c7a42','#d97706','#2563eb','#7c3aed','#dc2626','#059669',
+                   '#0891b2','#ea580c','#65a30d','#6d28d9','#be123c','#0369a1'];
+
+  let datasets;
+  if (USE_CROP) {
+    datasets = [{
+      label: '{{ selected_crop }}',
+      data: pts.map(p => ({ x: p.pest, y: p.yield })),
+      backgroundColor: ACCENT + 'aa',
+      pointRadius: 4,
+    }];
+  } else {
+    datasets = crops.map((crop, i) => ({
+      label: crop,
+      data: pts.filter(p => (p.crop || 'All') === crop).map(p => ({ x: p.pest, y: p.yield })),
+      backgroundColor: palette[i % palette.length] + '99',
+      pointRadius: 3,
+    }));
+  }
+
+  new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: !USE_CROP,
+          labels: { boxWidth: 12, font: { size: 10 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const p = pts[ctx.dataIndex] || {};
+              return `${p.country||''} ${p.year||''} | pest: ${ctx.parsed.x.toFixed(1)}T | yield: ${ctx.parsed.y.toFixed(0)} kg/ha`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Pesticide Use (tonnes)', font: { size: 11 } },
+          ticks: { font: { size: 10 } }
+        },
+        y: {
+          title: { display: true, text: 'Yield (kg/ha)', font: { size: 11 } },
+          ticks: { font: { size: 10 } }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

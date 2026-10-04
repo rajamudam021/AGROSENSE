@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Profile - AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <h2 class="fw-bold section-title mb-0">
+      <i class="fa-solid fa-id-card text-success me-2"></i>My Profile
+    </h2>
+    <p class="text-secondary mt-1">Manage your account and view your farming statistics.</p>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Left: Profile Card -->
+    <div class="col-lg-4">
+      <div class="card p-4 text-center mb-4">
+        <div class="avatar-circle mb-3">
+          {{ request.user.first_name|first|upper|default:request.user.username|first|upper }}
+        </div>
+        <h5 class="fw-bold mb-0">{{ request.user.get_full_name|default:request.user.username }}</h5>
+        <p class="text-secondary mb-1 small">{{ request.user.username }}</p>
+        <p class="text-secondary small">
+          <i class="fa-solid fa-phone me-1"></i>{{ profile.phone|default:"No phone" }}
+        </p>
+        <p class="text-secondary small">
+          <i class="fa-solid fa-calendar-plus me-1"></i>Joined {{ request.user.date_joined|date:"d M Y" }}
+        </p>
+        {% if request.user.is_staff %}
+          <span class="badge bg-danger mt-1">Staff / Admin</span>
+        {% endif %}
+      </div>
+
+      <!-- Stats Card -->
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3" style="color:var(--accent-green);">
+          <i class="fa-solid fa-chart-bar me-1"></i>Your Statistics
+        </h6>
+        <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+          <span class="text-secondary small">Total Predictions</span>
+          <strong>{{ total_preds }}</strong>
+        </div>
+        <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+          <span class="text-secondary small">Favorite Crop</span>
+          <strong style="color:var(--accent-green);">{{ fav_crop|capfirst }}</strong>
+        </div>
+        <div class="d-flex justify-content-between py-2">
+          <span class="text-secondary small">Avg Soil Score</span>
+          <strong>{{ avg_soil }} / 100</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Edit Forms -->
+    <div class="col-lg-8">
+
+      <!-- Edit Profile Form -->
+      <div class="card p-4 mb-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent-green);">
+          <i class="fa-solid fa-pen me-1"></i>Edit Profile
+        </h6>
+        <form method="POST" action="{% url 'profile' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_profile">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">Full Name</label>
+              <input type="text" name="name" class="form-control"
+                     value="{{ request.user.get_full_name }}"
+                     placeholder="Your full name">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Phone Number</label>
+              <input type="text" name="phone" class="form-control"
+                     value="{{ profile.phone }}"
+                     placeholder="Your phone number">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Email (Username)</label>
+              <input type="text" class="form-control" value="{{ request.user.username }}" disabled>
+              <div class="form-text text-secondary">Email cannot be changed.</div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-agro mt-3">
+            <i class="fa-solid fa-save me-1"></i>Save Changes
+          </button>
+        </form>
+      </div>
+
+      <!-- Change Password Form -->
+      <div class="card p-4 mb-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent-green);">
+          <i class="fa-solid fa-lock me-1"></i>Change Password
+        </h6>
+        <form method="POST" action="{% url 'profile' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="change_password">
+          <div class="row g-3">
+            <div class="col-sm-12">
+              <label class="form-label">Current Password</label>
+              <input type="password" name="old_password" class="form-control" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">New Password</label>
+              <input type="password" name="new_password" class="form-control"
+                     minlength="6" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Confirm New Password</label>
+              <input type="password" name="confirm_password" class="form-control"
+                     minlength="6" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-warning mt-3">
+            <i class="fa-solid fa-key me-1"></i>Change Password
+          </button>
+        </form>
+      </div>
+
+      <!-- Recent Activity Timeline -->
+      {% if recent_acts %}
+        <div class="card p-4">
+          <h6 class="fw-bold mb-3" style="color:var(--accent-green);">
+            <i class="fa-solid fa-timeline me-1"></i>Recent Activity
+          </h6>
+          <div class="timeline">
+            {% for pred in recent_acts %}
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <span class="timeline-stage">{{ pred.predicted_label|capfirst }}</span>
+                      {% if pred.soil_health_score %}
+                        <span class="timeline-days">Score: {{ pred.soil_health_score|floatformat:0 }}</span>
+                      {% endif %}
+                    </div>
+                    <small class="text-secondary">{{ pred.created_at|date:"d M" }}</small>
+                  </div>
+                  <div class="text-secondary small">
+                    N:{{ pred.N|floatformat:0 }} P:{{ pred.P|floatformat:0 }} K:{{ pred.K|floatformat:0 }}
+                    &bull; pH {{ pred.ph|floatformat:1 }}
+                    {% if pred.city %}&bull; {{ pred.city }}{% endif %}
+                  </div>
+                  <a href="{% url 'report' pred.pk %}" class="small text-success" target="_blank">
+                    <i class="fa-solid fa-external-link me-1"></i>View Report
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <a href="{% url 'history' %}" class="btn btn-outline-success btn-sm mt-2">
+            <i class="fa-solid fa-list me-1"></i>View Full History
+          </a>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

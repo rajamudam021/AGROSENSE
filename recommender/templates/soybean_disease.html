@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static dict_extras %}
+{% block title %}Soybean Disease Classifier — AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-seedling text-success me-2"></i>Soybean Disease Classifier
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Describe plant symptoms → AI diagnoses the disease from 19 possible conditions.
+        <span class="badge ms-1" style="background:var(--accent-light);color:var(--accent-dark);font-size:.72rem;">RF · 99.9% · 683 rows · 35 features</span>
+      </p>
+    </div>
+    <a href="{% url 'rice_disease' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-microscope me-1"></i>Rice Disease Detector
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Symptom form -->
+    <div class="col-lg-6">
+      <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-clipboard-list me-1"></i>Plant Symptoms Questionnaire
+        </h6>
+        <form method="POST" action="{% url 'soybean_disease' %}">
+          {% csrf_token %}
+          <div class="row g-2">
+            {% for col in key_features %}
+              {% with vals=opts.feature_values|get_item:col %}
+              <div class="col-sm-6">
+                <label class="form-label fw-semibold" style="font-size:.82rem;text-transform:capitalize;">
+                  {{ col|cut:"-"|capfirst }}
+                </label>
+                <select name="{{ col }}" class="form-select form-select-sm">
+                  <option value="unknown">-- not sure --</option>
+                  {% for v in vals %}
+                    <option value="{{ v }}" {% if submitted|get_item:col == v %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-agro w-100 mt-3">
+            <i class="fa-solid fa-stethoscope me-2"></i>Diagnose Disease
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="col-lg-6">
+      {% if error %}
+        <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+      {% endif %}
+
+      {% if result %}
+        {% with info=result.info %}
+        <!-- Top diagnosis -->
+        <div class="card p-4 mb-3" style="border-left:4px solid {{ info.color|default:'#1c7a42' }}!important;">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div style="width:56px;height:56px;border-radius:.75rem;
+                        background:{{ info.color|default:'#1c7a42' }}22;
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:1.6rem;color:{{ info.color|default:'#1c7a42' }};">
+              <i class="fa-solid {{ info.icon|default:'fa-bacterium' }}"></i>
+            </div>
+            <div>
+              <div class="text-muted small fw-bold text-uppercase">Diagnosed Disease</div>
+              <h4 class="fw-black mb-0" style="font-size:1.2rem;">{{ result.top_display }}</h4>
+              {% if info.severity %}
+              <span class="badge" style="background:{{ info.color }}22;color:{{ info.color }};">
+                {{ info.severity }} severity
+              </span>
+              {% endif %}
+            </div>
+            <div class="ms-auto text-center">
+              <div class="text-muted small">Confidence</div>
+              <div style="font-size:2rem;font-weight:900;color:{{ info.color|default:'#1c7a42' }};">
+                {{ result.confidence }}%
+              </div>
+            </div>
+          </div>
+
+          {% if info.description %}
+          <p style="font-size:.88rem;color:var(--text-muted);border-top:1px solid var(--border);
+                    padding-top:.75rem;margin-bottom:.75rem;">
+            {{ info.description }}
+          </p>
+          {% endif %}
+
+          {% if info.management %}
+          <div class="p-2 rounded" style="background:#dcfce7;border:1px solid #86efac;font-size:.85rem;">
+            <i class="fa-solid fa-shield-halved me-1 text-success"></i>
+            <strong>Management:</strong> {{ info.management }}
+          </div>
+          {% endif %}
+        </div>
+        {% endwith %}
+
+        <!-- Top 3 -->
+        {% if result.top3|length > 1 %}
+        <div class="card p-3">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">Differential Diagnosis</h6>
+          {% for r in result.top3 %}
+          <div class="mb-2">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="fw-semibold" style="font-size:.85rem;">
+                <i class="fa-solid {{ r.info.icon|default:'fa-circle' }} me-1" style="color:{{ r.info.color|default:'var(--accent)' }};width:16px;"></i>
+                {{ r.display }}
+              </span>
+              <span class="fw-bold" style="color:{{ r.info.color|default:'var(--accent)' }};">{{ r.confidence }}%</span>
+            </div>
+            <div class="progress" style="height:8px;">
+              <div class="progress-bar" style="width:{{ r.confidence }}%;background:{{ r.info.color|default:'var(--accent)' }};"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      {% else %}
+        <!-- Disease reference grid -->
+        <div class="card p-3">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-book-medical me-1"></i>Disease Reference (19 classes)
+          </h6>
+          <div style="max-height:520px;overflow-y:auto;">
+            {% for cls, info in disease_info.items %}
+            <div class="d-flex align-items-start gap-2 mb-2 p-2 rounded"
+                 style="border-left:3px solid {{ info.color }};background:var(--bg-alt);">
+              <i class="fa-solid {{ info.icon }} mt-1 flex-shrink-0" style="color:{{ info.color }};width:16px;"></i>
+              <div>
+                <div class="fw-bold" style="font-size:.83rem;color:{{ info.color }};">{{ info.display }}</div>
+                <div style="font-size:.74rem;color:var(--text-muted);">{{ info.description|truncatechars:80 }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

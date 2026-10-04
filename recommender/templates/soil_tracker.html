@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Soil Nutrient Tracker — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-layer-group text-success me-2"></i>Soil Nutrient Depletion Tracker
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Track cumulative N/P/K balance across crop seasons. Add each season's crop and fertilizer application.
+      </p>
+    </div>
+    <a href="{% url 'rotation_planner' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-rotate me-1"></i>Rotation Planner
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Add season form -->
+    <div class="col-lg-4">
+      <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-plus-circle me-1"></i>Log a Crop Season
+        </h6>
+        <form method="POST" action="{% url 'soil_tracker' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add">
+
+          <div class="mb-2">
+            <label class="form-label fw-semibold" style="font-size:.82rem;">Season / Label</label>
+            <input type="text" name="season" class="form-control form-control-sm"
+                   placeholder="e.g. Kharif 2024" value="Season {{ history|length|add:1 }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold" style="font-size:.82rem;">Crop Grown</label>
+            <select name="crop" class="form-select form-select-sm">
+              {% for c in all_crops %}
+                <option value="{{ c }}">{{ c|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold" style="font-size:.82rem;">Yield Achieved (tonnes/ha)</label>
+            <input type="number" name="yield_t" class="form-control form-control-sm"
+                   value="2.5" min="0" max="100" step="0.1">
+          </div>
+          <hr style="border-color:var(--border);">
+          <div class="text-muted fw-bold mb-2" style="font-size:.78rem;text-transform:uppercase;">
+            Fertilizer Applied (kg/ha)
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label" style="font-size:.75rem;color:#16a34a;font-weight:600;">N (kg)</label>
+              <input type="number" name="n_applied" class="form-control form-control-sm"
+                     value="60" min="0" max="500" step="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label" style="font-size:.75rem;color:#d97706;font-weight:600;">P (kg)</label>
+              <input type="number" name="p_applied" class="form-control form-control-sm"
+                     value="20" min="0" max="500" step="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label" style="font-size:.75rem;color:#2563eb;font-weight:600;">K (kg)</label>
+              <input type="number" name="k_applied" class="form-control form-control-sm"
+                     value="30" min="0" max="500" step="1">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-agro w-100 mb-2">
+            <i class="fa-solid fa-plus me-1"></i>Add Season
+          </button>
+        </form>
+        <form method="POST" action="{% url 'soil_tracker' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reset">
+          <button type="submit" class="btn btn-outline-danger btn-sm w-100"
+                  onclick="return confirm('Reset all history?')">
+            <i class="fa-solid fa-trash me-1"></i>Reset Tracker
+          </button>
+        </form>
+      </div>
+
+      <!-- Cumulative balance -->
+      <div class="card p-3 mt-3">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-balance-scale me-1"></i>Cumulative Balance
+        </h6>
+        <div class="row g-2 text-center">
+          <div class="col-4">
+            <div class="p-2 rounded" style="background:{% if cum_n >= 0 %}#dcfce7{% else %}#fee2e2{% endif %};
+                                            border:1px solid {% if cum_n >= 0 %}#86efac{% else %}#fca5a5{% endif %};">
+              <div style="font-size:.7rem;font-weight:700;color:{% if cum_n >= 0 %}#14532d{% else %}#7f1d1d{% endif %};">N Balance</div>
+              <div style="font-size:1.3rem;font-weight:900;color:{% if cum_n >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+                {% if cum_n >= 0 %}+{% endif %}{{ cum_n }}
+              </div>
+              <div style="font-size:.65rem;color:var(--text-muted);">kg/ha</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded" style="background:{% if cum_p >= 0 %}#fef3c7{% else %}#fee2e2{% endif %};
+                                            border:1px solid {% if cum_p >= 0 %}#fde68a{% else %}#fca5a5{% endif %};">
+              <div style="font-size:.7rem;font-weight:700;color:{% if cum_p >= 0 %}#92400e{% else %}#7f1d1d{% endif %};">P Balance</div>
+              <div style="font-size:1.3rem;font-weight:900;color:{% if cum_p >= 0 %}#d97706{% else %}#dc2626{% endif %};">
+                {% if cum_p >= 0 %}+{% endif %}{{ cum_p }}
+              </div>
+              <div style="font-size:.65rem;color:var(--text-muted);">kg/ha</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded" style="background:{% if cum_k >= 0 %}#dbeafe{% else %}#fee2e2{% endif %};
+                                            border:1px solid {% if cum_k >= 0 %}#93c5fd{% else %}#fca5a5{% endif %};">
+              <div style="font-size:.7rem;font-weight:700;color:{% if cum_k >= 0 %}#1e3a5f{% else %}#7f1d1d{% endif %};">K Balance</div>
+              <div style="font-size:1.3rem;font-weight:900;color:{% if cum_k >= 0 %}#2563eb{% else %}#dc2626{% endif %};">
+                {% if cum_k >= 0 %}+{% endif %}{{ cum_k }}
+              </div>
+              <div style="font-size:.65rem;color:var(--text-muted);">kg/ha</div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-2 p-2 rounded" style="background:var(--bg-alt);font-size:.77rem;color:var(--text-muted);">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Positive = surplus (over-applied). Negative = deficit (soil depleted). Target: balance near 0.
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart + History -->
+    <div class="col-lg-8">
+      {% if history %}
+      <!-- Trend chart -->
+      <div class="card p-3 mb-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-chart-line me-1"></i>Cumulative NPK Balance Trend
+        </h6>
+        <div style="position:relative;height:240px;">
+          <canvas id="npkChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Season history table -->
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-history me-1"></i>Season Log
+        </h6>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size:.8rem;">
+            <thead style="font-size:.72rem;text-transform:uppercase;color:var(--text-muted);background:var(--bg-alt);">
+              <tr>
+                <th>Season</th>
+                <th>Crop</th>
+                <th class="text-end">Yield (t)</th>
+                <th class="text-end" style="color:#16a34a;">N Applied</th>
+                <th class="text-end" style="color:#16a34a;">N Removed</th>
+                <th class="text-end" style="color:#16a34a;">N Balance</th>
+                <th class="text-end" style="color:#d97706;">P Bal</th>
+                <th class="text-end" style="color:#2563eb;">K Bal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for h in history %}
+              <tr>
+                <td class="fw-semibold">{{ h.season }}</td>
+                <td>{{ h.crop }}</td>
+                <td class="text-end">{{ h.yield_t }}</td>
+                <td class="text-end" style="color:#16a34a;">{{ h.n_applied }}</td>
+                <td class="text-end text-danger">-{{ h.n_removed }}</td>
+                <td class="text-end fw-bold"
+                    style="color:{% if h.n_balance >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+                  {% if h.n_balance >= 0 %}+{% endif %}{{ h.n_balance }}
+                </td>
+                <td class="text-end fw-bold"
+                    style="color:{% if h.p_balance >= 0 %}#d97706{% else %}#dc2626{% endif %};">
+                  {% if h.p_balance >= 0 %}+{% endif %}{{ h.p_balance }}
+                </td>
+                <td class="text-end fw-bold"
+                    style="color:{% if h.k_balance >= 0 %}#2563eb{% else %}#dc2626{% endif %};">
+                  {% if h.k_balance >= 0 %}+{% endif %}{{ h.k_balance }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% else %}
+        <div class="card p-5 text-center">
+          <i class="fa-solid fa-layer-group fa-3x mb-3" style="color:var(--border);"></i>
+          <h5 class="fw-bold">No seasons logged yet</h5>
+          <p class="text-muted">Use the form on the left to log your first crop season.</p>
+          <p class="text-muted" style="font-size:.85rem;">
+            The tracker will calculate how much N, P, and K were removed by the crop
+            vs. how much you applied in fertilizer — giving you the soil balance.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CHART_DATA = {{ chart_json|safe }};
+
+(function(){
+  const ctx = document.getElementById('npkChart');
+  if (!ctx || !CHART_DATA || !CHART_DATA.labels || !CHART_DATA.labels.length) return;
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: CHART_DATA.labels,
+      datasets: [
+        {
+          label: 'N Balance (kg/ha)',
+          data:  CHART_DATA.N,
+          borderColor: '#16a34a',
+          backgroundColor: '#16a34a22',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
+        },
+        {
+          label: 'P Balance (kg/ha)',
+          data:  CHART_DATA.P,
+          borderColor: '#d97706',
+          backgroundColor: '#d9770622',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 4,
+        },
+        {
+          label: 'K Balance (kg/ha)',
+          data:  CHART_DATA.K,
+          borderColor: '#2563eb',
+          backgroundColor: '#2563eb22',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } },
+        annotation: {
+          annotations: {
+            zeroline: {
+              type: 'line',
+              y: 0,
+              borderColor: '#6b7280',
+              borderWidth: 1,
+              borderDash: [4, 4],
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 } } },
+        y: {
+          title: { display: true, text: 'Cumulative Balance (kg/ha)', font: { size: 10 } },
+          ticks: { font: { size: 10 } },
+        },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

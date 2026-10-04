@@ -1,0 +1,430 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AgroSense - Smart AI Farming Advisor{% endblock %}</title>
+  <meta name="description" content="AgroSense - AI-powered crop recommendation, soil analysis, and smart farming advice for Indian farmers." />
+
+  <!-- Bootstrap 5.3.8 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" />
+
+  <!-- Font Awesome 6.5.1 Free -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- SweetAlert2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+
+  <!-- AgroSense Custom CSS -->
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ================ NAVBAR ================ -->
+<nav class="navbar navbar-expand-lg navbar-agro fixed-top">
+  <div class="container-fluid px-3 px-lg-4">
+
+    <!-- Brand -->
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
+      <span class="leaf-icon"><i class="fa-solid fa-leaf"></i></span>
+      Agro<span class="brand-sense">Sense</span>
+    </a>
+
+    <!-- Mobile hamburger -->
+    <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <!-- Nav links -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+             href="{% url 'home' %}">
+            <i class="fa-solid fa-house me-1"></i>Home
+          </a>
+        </li>
+
+        {% if user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'predict' %}active{% endif %}"
+               href="{% url 'predict' %}">
+              <i class="fa-solid fa-seedling me-1"></i>Predict
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'dashboard' %}">
+              <i class="fa-solid fa-chart-line me-1"></i>Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}"
+               href="{% url 'history' %}">
+              <i class="fa-solid fa-clock-rotate-left me-1"></i>History
+            </a>
+          </li>
+        {% endif %}
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'market_prices' %}active{% endif %}"
+             href="{% url 'market_prices' %}">
+            <i class="fa-solid fa-chart-bar me-1"></i>Prices
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'farming_tips' %}active{% endif %}"
+             href="{% url 'farming_tips' %}">
+            <i class="fa-solid fa-lightbulb me-1"></i>Tips
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'crop_calendar' %}active{% endif %}"
+             href="{% url 'crop_calendar' %}">
+            <i class="fa-solid fa-calendar-days me-1"></i>Calendar
+          </a>
+        </li>
+
+        <!-- Tools & Analytics dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name in 'fertilizer,cost_calculator,district_benchmark,tn_analytics,trends' %}active{% endif %}"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-flask me-1"></i>Tools
+          </a>
+          <ul class="dropdown-menu agro-dropdown">
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'fertilizer' %}active{% endif %}"
+                 href="{% url 'fertilizer' %}">
+                <i class="fa-solid fa-bottle-droplet me-2 text-success"></i>Fertilizer Advisor
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'cost_calculator' %}active{% endif %}"
+                 href="{% url 'cost_calculator' %}">
+                <i class="fa-solid fa-calculator me-2 text-success"></i>Cost Calculator
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'district_benchmark' %}active{% endif %}"
+                 href="{% url 'district_benchmark' %}">
+                <i class="fa-solid fa-map-location-dot me-2 text-success"></i>District Benchmark
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'trends' %}active{% endif %}"
+                 href="{% url 'trends' %}">
+                <i class="fa-solid fa-chart-line me-2 text-success"></i>India Trends
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'tn_analytics' %}active{% endif %}"
+                 href="{% url 'tn_analytics' %}">
+                <i class="fa-solid fa-flag me-2 text-success"></i>Tamil Nadu Analytics
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- AI Models dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name in 'yield_predictor,global_yield,rice_disease,soybean_disease,pesticide_analysis' %}active{% endif %}"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-brain me-1"></i>AI Models
+          </a>
+          <ul class="dropdown-menu agro-dropdown">
+            <li><h6 class="dropdown-header" style="font-size:.7rem;color:var(--text-faint);">Yield Prediction</h6></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'yield_predictor' %}active{% endif %}"
+                 href="{% url 'yield_predictor' %}">
+                <i class="fa-solid fa-wheat-awn me-2 text-success"></i>Yield Predictor
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'global_yield' %}active{% endif %}"
+                 href="{% url 'global_yield' %}">
+                <i class="fa-solid fa-globe me-2 text-success"></i>Global Yield
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header" style="font-size:.7rem;color:var(--text-faint);">Disease Detection</h6></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'rice_disease' %}active{% endif %}"
+                 href="{% url 'rice_disease' %}">
+                <i class="fa-solid fa-microscope me-2 text-success"></i>Rice Disease (CNN)
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'soybean_disease' %}active{% endif %}"
+                 href="{% url 'soybean_disease' %}">
+                <i class="fa-solid fa-seedling me-2 text-success"></i>Soybean Classifier
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'pesticide_analysis' %}active{% endif %}"
+                 href="{% url 'pesticide_analysis' %}">
+                <i class="fa-solid fa-flask-vial me-2 text-success"></i>Pesticide Analysis
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Research & Analytics dropdown (Tier-3 + Tier-4) -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name in 'global_agriculture,irrigation_advisor,rotation_planner,soil_tracker,corn_comparison,food_security,climate_forecast,anomaly_detection,portfolio_optimizer' %}active{% endif %}"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-chart-column me-1"></i>Research
+          </a>
+          <ul class="dropdown-menu agro-dropdown">
+            <li><h6 class="dropdown-header" style="font-size:.7rem;color:var(--text-faint);">Global Data</h6></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'global_agriculture' %}active{% endif %}"
+                 href="{% url 'global_agriculture' %}">
+                <i class="fa-solid fa-earth-asia me-2 text-success"></i>Global Agriculture
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'corn_comparison' %}active{% endif %}"
+                 href="{% url 'corn_comparison' %}">
+                <i class="fa-solid fa-scale-balanced me-2 text-success"></i>US vs India Corn
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'food_security' %}active{% endif %}"
+                 href="{% url 'food_security' %}">
+                <i class="fa-solid fa-bowl-rice me-2 text-success"></i>Food Security Index
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header" style="font-size:.7rem;color:var(--text-faint);">Farm Planning</h6></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'irrigation_advisor' %}active{% endif %}"
+                 href="{% url 'irrigation_advisor' %}">
+                <i class="fa-solid fa-droplet me-2 text-success"></i>Irrigation Advisor
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'rotation_planner' %}active{% endif %}"
+                 href="{% url 'rotation_planner' %}">
+                <i class="fa-solid fa-rotate me-2 text-success"></i>Rotation Planner
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'soil_tracker' %}active{% endif %}"
+                 href="{% url 'soil_tracker' %}">
+                <i class="fa-solid fa-layer-group me-2 text-success"></i>Soil Nutrient Tracker
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header" style="font-size:.7rem;color:var(--text-faint);">AI Forecasting</h6></li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'climate_forecast' %}active{% endif %}"
+                 href="{% url 'climate_forecast' %}">
+                <i class="fa-solid fa-temperature-half me-2 text-danger"></i>Climate Forecast
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'anomaly_detection' %}active{% endif %}"
+                 href="{% url 'anomaly_detection' %}">
+                <i class="fa-solid fa-triangle-exclamation me-2 text-warning"></i>Anomaly Detection
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'portfolio_optimizer' %}active{% endif %}"
+                 href="{% url 'portfolio_optimizer' %}">
+                <i class="fa-solid fa-layer-group me-2 text-success"></i>Portfolio Optimizer
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        {% if user.is_authenticated and user.is_staff %}
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/" target="_blank">
+              <i class="fa-solid fa-shield-halved me-1"></i>Admin
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+
+      <!-- Right controls -->
+      <div class="d-flex align-items-center gap-2">
+
+        <!-- Language selector -->
+        <select id="languageSelect" class="lang-select d-none d-lg-block" title="Select Language">
+          <option value="en">EN</option>
+          <option value="hi">HI</option>
+          <option value="te">TE</option>
+        </select>
+
+        {% if user.is_authenticated %}
+          <div class="dropdown">
+            <button class="user-btn btn"
+                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fa-solid fa-circle-user"></i>
+              <span class="d-none d-md-inline">{{ user.get_full_name|default:user.username }}</span>
+              <i class="fa-solid fa-chevron-down fa-xs"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end agro-dropdown">
+              <li class="px-3 py-1">
+                <div style="font-size:.75rem;color:var(--text-faint);">Signed in as</div>
+                <strong style="color:var(--text);font-size:.85rem;">{{ user.username }}</strong>
+              </li>
+              <li><hr class="dropdown-divider agro-dropdown"></li>
+              <li>
+                <a class="dropdown-item" href="{% url 'profile' %}">
+                  <i class="fa-solid fa-id-card me-2 text-success"></i>Profile
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'dashboard' %}">
+                  <i class="fa-solid fa-chart-line me-2 text-success"></i>Dashboard
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{% url 'logout' %}" style="color:#dc2626;">
+                  <i class="fa-solid fa-right-from-bracket me-2"></i>Logout
+                </a>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <a href="{% url 'login' %}" class="btn btn-sm btn-outline-light fw-600">
+            <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+          </a>
+          <a href="{% url 'signup' %}" class="btn btn-sm btn-agro">
+            <i class="fa-solid fa-user-plus me-1"></i>Sign Up
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Spacer for fixed navbar (68px height) -->
+<div style="height:68px;"></div>
+
+<!-- ================ DJANGO MESSAGES ================ -->
+<div id="alertContainer" class="container-fluid px-4 mt-2">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+        {% if message.tags == 'error' or message.tags == 'danger' %}
+          <i class="fa-solid fa-circle-exclamation me-2"></i>
+        {% elif message.tags == 'success' %}
+          <i class="fa-solid fa-circle-check me-2"></i>
+        {% elif message.tags == 'warning' %}
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        {% else %}
+          <i class="fa-solid fa-circle-info me-2"></i>
+        {% endif %}
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+</div>
+
+<!-- Voice listening indicator -->
+<div id="voiceIndicator" class="voice-indicator">
+  <i class="fa-solid fa-microphone fa-beat me-2"></i>Listening... Speak now
+</div>
+
+<!-- ================ MAIN CONTENT ================ -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ================ FOOTER ================ -->
+<footer class="footer-agro">
+  <div class="container-fluid px-3 px-lg-4">
+    <div class="row g-4">
+
+      <!-- About -->
+      <div class="col-lg-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:30px;height:30px;background:var(--accent);border-radius:.45rem;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#fff;">
+            <i class="fa-solid fa-leaf"></i>
+          </div>
+          <h6 class="mb-0">AgroSense</h6>
+        </div>
+        <p style="font-size:.9rem;opacity:.78;max-width:300px;line-height:1.65;">
+          Smart AI-powered farming advisor helping Indian farmers make data-driven decisions
+          for better yields and sustainable agriculture.
+        </p>
+        <div class="footer-social mt-3">
+          <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+          <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+          <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+          <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="col-sm-6 col-lg-2">
+        <h6>Quick Links</h6>
+        <a href="{% url 'home' %}"><i class="fa-solid fa-angle-right me-1"></i>Home</a>
+        <a href="{% url 'predict' %}"><i class="fa-solid fa-angle-right me-1"></i>Crop Prediction</a>
+        <a href="{% url 'market_prices' %}"><i class="fa-solid fa-angle-right me-1"></i>Market Prices</a>
+        <a href="{% url 'farming_tips' %}"><i class="fa-solid fa-angle-right me-1"></i>Farming Tips</a>
+        <a href="{% url 'crop_calendar' %}"><i class="fa-solid fa-angle-right me-1"></i>Crop Calendar</a>
+      </div>
+
+      <!-- Resources -->
+      <div class="col-sm-6 col-lg-3">
+        <h6>Useful Resources</h6>
+        <a href="https://www.icar.org.in" target="_blank" rel="noopener">
+          <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>ICAR Research
+        </a>
+        <a href="https://agricoop.nic.in" target="_blank" rel="noopener">
+          <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Ministry of Agriculture
+        </a>
+        <a href="https://enam.gov.in" target="_blank" rel="noopener">
+          <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>e-NAM Market Portal
+        </a>
+        <a href="https://mkisan.gov.in" target="_blank" rel="noopener">
+          <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>mKisan Portal
+        </a>
+      </div>
+
+      <!-- Contact -->
+      <div class="col-lg-3">
+        <h6>Contact Us</h6>
+        <p style="font-size:.875rem;opacity:.84;line-height:2.1;">
+          <i class="fa-solid fa-envelope me-2"></i>support@agrosense.in<br>
+          <i class="fa-solid fa-phone me-2"></i>1800-XXX-XXXX (Toll Free)<br>
+          <i class="fa-solid fa-location-dot me-2"></i>India
+        </p>
+      </div>
+    </div>
+
+    <hr class="footer-divider" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center footer-bottom gap-2">
+      <p class="mb-0">&copy; 2026 AgroSense. All rights reserved.</p>
+      <p class="mb-0">
+        Made with <i class="fa-solid fa-heart" style="color:#f56565;"></i> for Indian Farmers
+        &nbsp;&bull;&nbsp;
+        <small>Powered by Random Forest AI Model</small>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<!-- ================ SCRIPTS ================ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js" defer></script>
+<!-- Chart.js & Leaflet are loaded only by templates that need them via the extra_scripts block -->
+<script src="{% static 'js/main.js' %}" defer></script>
+
+{% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

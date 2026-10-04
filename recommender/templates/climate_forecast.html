@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Climate Impact on Yield — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-temperature-half text-danger me-2"></i>Climate Impact on Yield Forecasting
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        170-year historical climate &amp; yield data · Long-range forecast to 2030 / 2050
+        <span class="badge ms-1" style="background:var(--accent-light);color:var(--accent-dark);font-size:.72rem;">
+          28,242 country-crop records
+        </span>
+      </p>
+    </div>
+    <a href="{% url 'anomaly_detection' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-triangle-exclamation me-1"></i>Anomaly Detection
+    </a>
+  </div>
+
+  <!-- Filter form -->
+  <div class="card mb-4 p-4">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-sm-4">
+        <label class="form-label fw-600">Country / Region</label>
+        <select name="country" class="form-select">
+          {% for c in countries %}
+            <option value="{{ c }}" {% if c == selected_country %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-4">
+        <label class="form-label fw-600">Crop</label>
+        <select name="crop" class="form-select">
+          {% for cr in crops %}
+            <option value="{{ cr }}" {% if cr == selected_crop %}selected{% endif %}>{{ cr }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-4">
+        <button type="submit" class="btn btn-agro w-100">
+          <i class="fa-solid fa-magnifying-glass me-1"></i>Analyse &amp; Forecast
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-2"></i>{{ error }}</div>
+  {% endif %}
+
+  {% if result %}
+  <!-- KPI cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid var(--accent)!important;">
+        <div class="text-muted small fw-bold">Baseline Yield</div>
+        <div style="font-size:1.8rem;font-weight:900;color:var(--accent);">{{ result.baseline_t }}</div>
+        <div class="text-muted" style="font-size:.75rem;">tonnes / ha</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid {% if result.pct_change_2030 >= 0 %}#22c55e{% else %}#ef4444{% endif %}!important;">
+        <div class="text-muted small fw-bold">2030 Forecast</div>
+        <div style="font-size:1.8rem;font-weight:900;color:{% if result.pct_change_2030 >= 0 %}#22c55e{% else %}#ef4444{% endif %};">{{ result.forecast_2030_t }}</div>
+        <div class="text-muted" style="font-size:.75rem;">t/ha &nbsp;
+          <span class="{% if result.pct_change_2030 >= 0 %}text-success{% else %}text-danger{% endif %}">
+            ({% if result.pct_change_2030 >= 0 %}+{% endif %}{{ result.pct_change_2030 }}%)
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid {% if result.pct_change_2050 >= 0 %}#22c55e{% else %}#dc2626{% endif %}!important;">
+        <div class="text-muted small fw-bold">2050 Forecast</div>
+        <div style="font-size:1.8rem;font-weight:900;color:{% if result.pct_change_2050 >= 0 %}#22c55e{% else %}#dc2626{% endif %};">{{ result.forecast_2050_t }}</div>
+        <div class="text-muted" style="font-size:.75rem;">t/ha &nbsp;
+          <span class="{% if result.pct_change_2050 >= 0 %}text-success{% else %}text-danger{% endif %}">
+            ({% if result.pct_change_2050 >= 0 %}+{% endif %}{{ result.pct_change_2050 }}%)
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      {% if result.temp %}
+      <div class="card p-3 text-center" style="border-left:4px solid #f97316!important;">
+        <div class="text-muted small fw-bold">Temp Δ by 2050</div>
+        <div style="font-size:1.8rem;font-weight:900;color:#f97316;">
+          {% if result.temp.delta_2050 and result.temp.delta_2050 > 0 %}+{% endif %}{{ result.temp.delta_2050|default:"N/A" }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">°C warming projected</div>
+      </div>
+      {% else %}
+      <div class="card p-3 text-center" style="border-left:4px solid #94a3b8!important;">
+        <div class="text-muted small fw-bold">Trend</div>
+        <div style="font-size:1.4rem;font-weight:900;color:var(--text);">{{ result.trend_dir|title }}</div>
+        <div class="text-muted" style="font-size:.75rem;">{{ result.data_points }} data points</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Main chart -->
+  <div class="card mb-4 p-4">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <h5 class="fw-bold mb-0">
+        {{ result.crop }} Yield Trend — {{ result.country }}
+        <small class="text-muted fw-normal ms-1" style="font-size:.8rem;">({{ result.years_range }})</small>
+      </h5>
+      <span class="badge" style="background:var(--accent-light);color:var(--accent-dark);">
+        Trend R² = {{ result.y_r2 }} &nbsp;|&nbsp; Slope {{ result.y_slope }} hg/ha/yr
+      </span>
+    </div>
+    <canvas id="yieldChart" height="100"></canvas>
+  </div>
+
+  <!-- Temperature insight -->
+  {% if result.temp %}
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6">
+      <div class="card p-4 h-100">
+        <h6 class="fw-bold mb-3"><i class="fa-solid fa-thermometer-half text-danger me-2"></i>Temperature Analysis</h6>
+        <div class="row g-2 text-center">
+          <div class="col-4">
+            <div class="fw-bold" style="font-size:1.3rem;color:var(--accent);">{{ result.temp.current }}°C</div>
+            <div class="text-muted" style="font-size:.78rem;">Current avg</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold" style="font-size:1.3rem;color:#f97316;">{{ result.temp.proj_2030 }}°C</div>
+            <div class="text-muted" style="font-size:.78rem;">2030 projection</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold" style="font-size:1.3rem;color:#dc2626;">{{ result.temp.proj_2050 }}°C</div>
+            <div class="text-muted" style="font-size:.78rem;">2050 projection</div>
+          </div>
+        </div>
+        <hr class="my-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fa-solid fa-link text-secondary"></i>
+          <span>Temperature–Yield correlation:
+            <strong class="{% if result.temp.corr > 0 %}text-success{% elif result.temp.corr < 0 %}text-danger{% else %}text-secondary{% endif %}">
+              {{ result.temp.corr_label }} (r = {{ result.temp.corr }})
+            </strong>
+          </span>
+        </div>
+        <div class="text-muted mt-1" style="font-size:.8rem;">
+          Warming rate: {{ result.temp.slope }}°C per decade
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card p-4 h-100">
+        <h6 class="fw-bold mb-3"><i class="fa-solid fa-chart-line text-success me-2"></i>Forecast Summary</h6>
+        <p class="mb-2" style="font-size:.92rem;">
+          <i class="fa-solid fa-seedling text-success me-1"></i>
+          <strong>{{ result.country }} {{ result.crop }}</strong> yield is
+          <span class="fw-bold {% if result.y_slope > 0 %}text-success{% else %}text-danger{% endif %}">{{ result.trend_dir }}</span>
+          at <strong>{{ result.y_slope }} hg/ha/year</strong>.
+        </p>
+        <p class="mb-2" style="font-size:.92rem;">
+          <i class="fa-solid fa-calendar-days text-primary me-1"></i>
+          By <strong>2030</strong>: estimated
+          <strong>{{ result.forecast_2030_hg|floatformat:0 }} hg/ha</strong>
+          ({{ result.forecast_2030_t }} t/ha)
+          — a <strong>{% if result.pct_change_2030 >= 0 %}+{% endif %}{{ result.pct_change_2030 }}%</strong> change.
+        </p>
+        <p class="mb-0" style="font-size:.92rem;">
+          <i class="fa-solid fa-calendar-days text-warning me-1"></i>
+          By <strong>2050</strong>: estimated
+          <strong>{{ result.forecast_2050_hg|floatformat:0 }} hg/ha</strong>
+          ({{ result.forecast_2050_t }} t/ha)
+          — a <strong>{% if result.pct_change_2050 >= 0 %}+{% endif %}{{ result.pct_change_2050 }}%</strong> change.
+        </p>
+        <div class="alert alert-warning mt-3 mb-0 py-2 px-3" style="font-size:.8rem;">
+          <i class="fa-solid fa-triangle-exclamation me-1"></i>
+          Forecasts are based on linear extrapolation of historical trends.
+          Actual yields may vary due to policy, technology, and extreme weather events.
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}{# end result #}
+
+</div><!-- /container -->
+{% endblock %}
+
+{% block extra_scripts %}
+{% if result %}
+<script>
+(function () {
+  const raw = {{ chart_json|safe }};
+  if (!raw) return;
+
+  const hist   = raw.filter(d => d.yield !== null);
+  const trend  = raw.filter(d => d.trend !== null);
+  const future = raw.filter(d => d.year >= 2030);
+
+  const ctx = document.getElementById('yieldChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Actual Yield (hg/ha)',
+          data: hist.map(d => ({x: d.year, y: d.yield})),
+          borderColor: 'rgba(34,197,94,0.9)',
+          backgroundColor: 'rgba(34,197,94,0.08)',
+          pointRadius: 3,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Linear Trend',
+          data: trend.map(d => ({x: d.year, y: d.trend})),
+          borderColor: 'rgba(234,88,12,0.8)',
+          borderDash: [5,4],
+          pointRadius: 0,
+          tension: 0,
+          fill: false,
+        },
+        {
+          label: 'Forecast',
+          data: future.map(d => ({x: d.year, y: d.trend})),
+          borderColor: 'rgba(220,38,38,0.85)',
+          backgroundColor: 'rgba(220,38,38,0.07)',
+          borderDash: [8,4],
+          pointRadius: 6,
+          pointStyle: 'star',
+          tension: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {mode: 'index', intersect: false},
+      plugins: {
+        legend: {position: 'bottom'},
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() ?? 'N/A'} hg/ha`
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          title: {display: true, text: 'Year'},
+          ticks: {callback: v => v}
+        },
+        y: {
+          title: {display: true, text: 'Yield (hg/ha)'},
+          beginAtZero: false
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

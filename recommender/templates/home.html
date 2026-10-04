@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}AgroSense — Smart AI Farming Advisor{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     HERO — full viewport, 55/45 split layout
+════════════════════════════════════════════════════════════ -->
+<section class="hero-section w-100">
+  <div class="hero-inner">
+
+    <!-- LEFT: copy -->
+    <div>
+      <div class="hero-eyebrow fade-in-scroll">
+        <i class="fa-solid fa-robot"></i>
+        AI-Powered Crop Intelligence
+      </div>
+
+      <h1 class="hero-title fade-in-scroll">
+        Smart AI<br>
+        <span class="accent">Farming</span><br>
+        Advisor
+      </h1>
+
+      <p class="hero-desc fade-in-scroll">
+        Enter your soil N&thinsp;P&thinsp;K, pH, temperature, humidity, and rainfall
+        to get personalised crop recommendations, soil health scores, fertiliser plans,
+        and profit estimates — powered by a trained Random Forest model.
+      </p>
+
+      <div class="hero-actions fade-in-scroll">
+        <a href="{% url 'predict' %}" class="btn btn-green btn-green-lg">
+          <i class="fa-solid fa-seedling me-2"></i>Start Crop Recommendation
+        </a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard' %}" class="btn btn-ghost btn-green-lg">
+            <i class="fa-solid fa-chart-line me-2"></i>My Dashboard
+          </a>
+        {% else %}
+          <a href="{% url 'signup' %}" class="btn btn-ghost btn-green-lg">
+            <i class="fa-solid fa-user-plus me-2"></i>Get Started Free
+          </a>
+        {% endif %}
+      </div>
+
+      <div class="hero-stats fade-in-scroll">
+        <div class="hero-stat-item">
+          <div class="num">23+</div>
+          <div class="lbl">Crop Types</div>
+        </div>
+        <div class="hero-stat-item">
+          <div class="num">95%+</div>
+          <div class="lbl">Accuracy</div>
+        </div>
+        <div class="hero-stat-item">
+          <div class="num">7</div>
+          <div class="lbl">Soil Params</div>
+        </div>
+        <div class="hero-stat-item">
+          <div class="num">Free</div>
+          <div class="lbl">Always</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: animated glass card — visible on ALL screen sizes -->
+    <div class="hero-visual fade-in-scroll">
+
+      <!-- Floating labels -->
+      <div class="hero-float-badge hfb-1">
+        <i class="fa-solid fa-bolt me-1" style="color:#fbbf24;"></i>Instant Results
+      </div>
+      <div class="hero-float-badge hfb-2">
+        <i class="fa-solid fa-shield-halved me-1" style="color:var(--g-300);"></i>AI Verified
+      </div>
+
+      <div class="hero-card-mockup">
+        <!-- Header -->
+        <div class="hm-header">
+          <div class="hm-logo-dot"><i class="fa-solid fa-leaf"></i></div>
+          <div>
+            <div class="hm-title">AgroSense Prediction</div>
+            <div class="hm-sub">Based on your soil data</div>
+          </div>
+        </div>
+
+        <!-- Top recommended crop -->
+        <div class="hm-crop-result">
+          <span class="hm-crop-emoji">🌾</span>
+          <div class="hm-crop-name">Rice</div>
+          <div class="hm-crop-conf"><i class="fa-solid fa-circle-check me-1"></i>92% confidence</div>
+        </div>
+
+        <!-- Top 3 confidence bars -->
+        <div class="hm-bar-row">
+          <div class="hm-bar-label"><span>🌾 Rice</span><span>92%</span></div>
+          <div class="hm-bar-track"><div class="hm-bar-fill" style="width:92%;"></div></div>
+        </div>
+        <div class="hm-bar-row">
+          <div class="hm-bar-label"><span>🌽 Maize</span><span>78%</span></div>
+          <div class="hm-bar-track"><div class="hm-bar-fill" style="width:78%;opacity:.75;"></div></div>
+        </div>
+        <div class="hm-bar-row">
+          <div class="hm-bar-label"><span>🫘 Chickpea</span><span>61%</span></div>
+          <div class="hm-bar-track"><div class="hm-bar-fill" style="width:61%;opacity:.55;"></div></div>
+        </div>
+
+        <!-- Soil NPK chips -->
+        <div class="hm-soil-row">
+          <div class="hm-soil-chip">
+            <div class="val">82</div>
+            <div class="key">Soil Score</div>
+          </div>
+          <div class="hm-soil-chip">
+            <div class="val">N 50</div>
+            <div class="key">Nitrogen</div>
+          </div>
+          <div class="hm-soil-chip">
+            <div class="val">pH 6.5</div>
+            <div class="key">Soil pH</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <a href="#stats" class="hero-scroll">
+    <i class="fa-solid fa-angles-down"></i>
+  </a>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     STATS — 4 animated counter cards
+════════════════════════════════════════════════════════════ -->
+<section class="stats-section w-100" id="stats">
+  <div class="container-fluid">
+    <div class="row g-4">
+
+      <div class="col-6 col-lg-3">
+        <div class="stat-card-new fade-in-scroll"
+             style="--card-strip-a:var(--accent);--card-strip-b:var(--g-400);">
+          <div class="stat-icon green"><i class="fa-solid fa-seedling"></i></div>
+          <div class="stat-number-new" data-counter="23" data-counter-suffix="+">0+</div>
+          <div class="stat-label-new">Crops Analyzed</div>
+          <div class="stat-desc-new">Rice, Maize, Cotton, Wheat &amp; 19 more</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="stat-card-new fade-in-scroll"
+             style="--card-strip-a:#2563eb;--card-strip-b:#60a5fa;transition-delay:.1s;">
+          <div class="stat-icon blue"><i class="fa-solid fa-bullseye"></i></div>
+          <div class="stat-number-new" data-counter="95" data-counter-suffix="%">0%</div>
+          <div class="stat-label-new">Model Accuracy</div>
+          <div class="stat-desc-new">Random Forest trained on 2,200+ records</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="stat-card-new fade-in-scroll"
+             style="--card-strip-a:var(--a-600);--card-strip-b:var(--a-400);transition-delay:.2s;">
+          <div class="stat-icon amber"><i class="fa-solid fa-flask"></i></div>
+          <div class="stat-number-new" data-counter="7">0</div>
+          <div class="stat-label-new">Soil Parameters</div>
+          <div class="stat-desc-new">N, P, K, pH, Temp, Humidity, Rainfall</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="stat-card-new fade-in-scroll"
+             style="--card-strip-a:#7c3aed;--card-strip-b:#a78bfa;transition-delay:.3s;">
+          <div class="stat-icon purple"><i class="fa-solid fa-lock-open"></i></div>
+          <div class="stat-number-new">100%</div>
+          <div class="stat-label-new">Free to Use</div>
+          <div class="stat-desc-new">No subscription, no hidden charges</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     FEATURES — 8-card grid
+════════════════════════════════════════════════════════════ -->
+<section class="features-section w-100" id="features">
+  <div class="container-fluid">
+    <div class="text-center mb-5">
+      <div class="section-eyebrow fade-in-scroll">
+        <i class="fa-solid fa-star me-1"></i>Platform Features
+      </div>
+      <h2 class="section-title-new fade-in-scroll">Everything You Need to Farm Smarter</h2>
+      <p class="section-desc mx-auto mt-3 fade-in-scroll">
+        Comprehensive AI tools for data-driven crop decisions — from soil analysis to profit estimation.
+      </p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-sm-6 col-xl-3 fade-in-scroll">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-seedling"></i></div>
+          <div class="feat-title">Crop Recommendation</div>
+          <p class="feat-desc">Top 3 crop suggestions with confidence scores based on your soil NPK and climate conditions.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.05s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-flask"></i></div>
+          <div class="feat-title">Soil Health Analyzer</div>
+          <p class="feat-desc">Instant soil health score (0–100) with N/P/K/pH analysis and smart alert suggestions.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.1s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-bag-shopping"></i></div>
+          <div class="feat-title">Fertilizer Advice</div>
+          <p class="feat-desc">Personalised fertilizer plan (Urea, DAP, MOP) with dosage based on soil nutrient gaps.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.15s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-droplet"></i></div>
+          <div class="feat-title">Irrigation Guide</div>
+          <p class="feat-desc">Crop-specific watering schedules with frequency, timing, and best practices.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.2s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-cloud-sun-rain"></i></div>
+          <div class="feat-title">Weather Integration</div>
+          <p class="feat-desc">Auto-fill temperature, humidity &amp; rainfall from OpenWeatherMap by entering your city.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.25s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-chart-bar"></i></div>
+          <div class="feat-title">Market Prices</div>
+          <p class="feat-desc">Indicative MSP &amp; market rates for 23 crops with up/down/stable trend indicators.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.3s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+          <div class="feat-title">Yield &amp; Profit</div>
+          <p class="feat-desc">Estimate expected yield, revenue, input cost, and net profit based on land size in acres.</p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3 fade-in-scroll" style="transition-delay:.35s;">
+        <div class="feature-card-new">
+          <div class="feat-icon"><i class="fa-solid fa-lightbulb"></i></div>
+          <div class="feat-title">Farming Tips &amp; Calendar</div>
+          <p class="feat-desc">Expert agronomic tips, growth stage timelines, rotation advice &amp; monthly crop calendar.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     SEASONAL CROPS
+════════════════════════════════════════════════════════════ -->
+<section class="seasonal-section w-100">
+  <div class="container-fluid">
+    <div class="text-center mb-4">
+      <span class="season-badge badge-{{ season.name|lower }} mb-2 fade-in-scroll">
+        {{ season.name }} Season — Active Now
+      </span>
+      <h2 class="section-title-new fade-in-scroll mt-2">Crops to Grow Right Now</h2>
+      <p class="section-desc mx-auto mt-2 fade-in-scroll">
+        Best crops to plant this {{ season.name }} season based on Indian agricultural calendar.
+      </p>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-center gap-2 mb-4 fade-in-scroll">
+      {% for crop in season.recommended_crops %}
+        <span class="crop-pill">
+          {{ crop|capfirst }}
+        </span>
+      {% endfor %}
+    </div>
+
+    <div class="text-center fade-in-scroll">
+      <a href="{% url 'crop_calendar' %}" class="btn btn-outline-agro me-2">
+        <i class="fa-solid fa-calendar-days me-2"></i>Full Crop Calendar
+      </a>
+      <a href="{% url 'predict' %}" class="btn btn-agro">
+        <i class="fa-solid fa-seedling me-2"></i>Get AI Recommendation
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     HOW IT WORKS — 3 steps with connectors
+════════════════════════════════════════════════════════════ -->
+<section class="how-section w-100" id="how-it-works">
+  <div class="container-fluid">
+    <div class="text-center mb-5">
+      <div class="section-eyebrow fade-in-scroll">
+        <i class="fa-solid fa-list-ol me-1"></i>Simple Process
+      </div>
+      <h2 class="section-title-new fade-in-scroll">How It Works</h2>
+      <p class="section-desc mx-auto mt-3 fade-in-scroll">
+        Get your personalised crop recommendation in 3 simple steps
+      </p>
+    </div>
+
+    <div class="row g-4 align-items-stretch">
+      <div class="col-md-4 fade-in-scroll">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h5>Enter Soil Data</h5>
+          <p>Input Nitrogen, Phosphorus, Potassium, pH, temperature, humidity, and rainfall — or auto-fill climate data using the weather API with your city name.</p>
+        </div>
+      </div>
+
+      <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center step-connector fade-in-scroll" style="transition-delay:.1s;">
+        <i class="fa-solid fa-arrow-right fa-lg" style="color:var(--border-strong);"></i>
+      </div>
+
+      <div class="col-md-3 fade-in-scroll" style="transition-delay:.15s;">
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h5>AI Analyzes</h5>
+          <p>Our Random Forest model trained on 2,200+ records instantly ranks the best crop options with confidence percentages and soil health scoring.</p>
+        </div>
+      </div>
+
+      <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center step-connector fade-in-scroll" style="transition-delay:.2s;">
+        <i class="fa-solid fa-arrow-right fa-lg" style="color:var(--border-strong);"></i>
+      </div>
+
+      <div class="col-md-3 fade-in-scroll" style="transition-delay:.25s;">
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h5>Full Farming Report</h5>
+          <p>Receive soil analysis, fertilizer plan, irrigation schedule, yield &amp; profit estimates, growth timeline — plus a printable PDF farming report.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-5 fade-in-scroll">
+      <a href="{% url 'predict' %}" class="btn btn-agro btn-lg px-5 py-3">
+        <i class="fa-solid fa-play me-2"></i>Try It Now — It's Free
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CTA BANNER — dark forest green
+════════════════════════════════════════════════════════════ -->
+<section class="cta-section w-100 text-center text-white">
+  <div class="container-fluid fade-in-scroll" style="position:relative;z-index:1;">
+    <h2 class="fw-black mb-3" style="font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-.03em;">
+      Ready to Grow Smarter?
+    </h2>
+    <p style="opacity:.72;max-width:500px;margin:0 auto 2.2rem;font-size:1.05rem;line-height:1.65;">
+      Join farmers across India using AI-powered insights to maximise yields
+      and reduce input costs with precision agriculture.
+    </p>
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      {% if user.is_authenticated %}
+        <a href="{% url 'predict' %}" class="btn btn-green btn-green-lg">
+          <i class="fa-solid fa-seedling me-2"></i>Make a Prediction
+        </a>
+        <a href="{% url 'market_prices' %}" class="btn btn-ghost btn-green-lg">
+          <i class="fa-solid fa-chart-bar me-2"></i>Check Market Prices
+        </a>
+      {% else %}
+        <a href="{% url 'signup' %}" class="btn btn-green btn-green-lg">
+          <i class="fa-solid fa-user-plus me-2"></i>Create Free Account
+        </a>
+        <a href="{% url 'login' %}" class="btn btn-ghost btn-green-lg">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Login
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}

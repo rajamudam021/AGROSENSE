@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fertilizer Advisor — AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-bottle-droplet text-success me-2"></i>Fertilizer Advisor
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Enter your soil and crop conditions to get an AI-powered fertilizer recommendation
+        trained on 8,000 real field records.
+      </p>
+    </div>
+    <a href="{% url 'predict' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-seedling me-1"></i>Crop Predictor
+    </a>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ── INPUT FORM ── -->
+    <div class="col-lg-5">
+      <div class="predict-form-card">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-sliders me-1"></i> Enter Conditions
+        </h6>
+
+        {% if error %}
+          <div class="alert alert-danger mb-3">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}
+          </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'fertilizer' %}">
+          {% csrf_token %}
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label">Temperature (°C)</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-temperature-half"></i></span>
+                <input type="number" name="temperature" class="form-control"
+                       placeholder="e.g. 28"
+                       value="{{ result.inputs.temperature|default:'' }}"
+                       min="10" max="50" step="0.1" required>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Humidity (%)</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-droplet"></i></span>
+                <input type="number" name="humidity" class="form-control"
+                       placeholder="e.g. 65"
+                       value="{{ result.inputs.humidity|default:'' }}"
+                       min="0" max="100" step="1" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Soil Moisture (%)</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-water"></i></span>
+              <input type="number" name="moisture" class="form-control"
+                     placeholder="e.g. 40"
+                     value="{{ result.inputs.moisture|default:'' }}"
+                     min="0" max="100" step="1" required>
+            </div>
+            <div class="form-text">Percentage of water in soil (field moisture content).</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Soil Type</label>
+            <select name="soil_type" class="form-select" required>
+              <option value="">-- Select soil type --</option>
+              {% for s in soil_types %}
+                <option value="{{ s }}"
+                  {% if result.inputs.soil_type == s %}selected{% endif %}>
+                  {{ s }} Soil
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label">Crop Type</label>
+            <select name="crop_type" class="form-select" required>
+              <option value="">-- Select crop --</option>
+              {% for c in crop_types %}
+                <option value="{{ c }}"
+                  {% if result.inputs.crop_type == c %}selected{% endif %}>
+                  {{ c }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-agro w-100 btn-lg">
+            <i class="fa-solid fa-flask me-2"></i>Get Fertilizer Recommendation
+          </button>
+        </form>
+      </div>
+
+      <!-- Soil Type Guide -->
+      <div class="card p-3 mt-3">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-circle-info me-1"></i> Soil Type Guide
+        </h6>
+        <div class="row g-2 text-center" style="font-size:.8rem;">
+          <div class="col-4">
+            <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+              <div class="fw-bold">Sandy</div>
+              <div class="text-muted">Drains fast, low nutrients</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+              <div class="fw-bold">Loamy</div>
+              <div class="text-muted">Balanced, ideal for most crops</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+              <div class="fw-bold">Clayey</div>
+              <div class="text-muted">Retains water, dense</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+              <div class="fw-bold">Black</div>
+              <div class="text-muted">High moisture retention, cotton-friendly</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+              <div class="fw-bold">Red</div>
+              <div class="text-muted">Low fertility, needs heavy fertilization</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RESULTS ── -->
+    <div class="col-lg-7">
+      {% if result %}
+      <div style="animation:fadeInUp .5s ease;">
+
+        <!-- Top Recommendation Banner -->
+        <div class="card p-4 mb-4" style="border-left:5px solid var(--accent) !important;">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:#fff;flex-shrink:0;">
+              <i class="fa-solid fa-{% if result.info.icon %}{{ result.info.icon }}{% else %}flask{% endif %}"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-muted small text-uppercase fw-bold mb-1">Best Fertilizer</div>
+              <div class="fw-black" style="font-size:1.8rem;letter-spacing:-.02em;color:var(--text);">
+                {{ result.top_fertilizer }}
+              </div>
+              {% if result.info.npk %}
+                <span class="badge rounded-pill px-3 py-1 mt-1"
+                      style="background:var(--accent-light);color:var(--accent-dark);font-size:.82rem;">
+                  NPK {{ result.info.npk }}
+                </span>
+              {% endif %}
+            </div>
+            <div class="text-end">
+              <div class="text-muted small">For {{ result.inputs.crop_type }}</div>
+              <div class="text-muted small">{{ result.inputs.soil_type }} Soil · {{ result.inputs.temperature }}°C</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fertilizer Details -->
+        {% if result.info %}
+        <div class="card p-3 mb-4">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-circle-info me-1"></i> Application Details
+          </h6>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <div class="p-3 rounded h-100" style="background:var(--bg-alt);border:1px solid var(--border);">
+                <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-atom me-1"></i>Nutrient Target</div>
+                <div class="fw-semibold">{{ result.info.nutrient }}</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded h-100" style="background:var(--bg-alt);border:1px solid var(--border);">
+                <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-scale-balanced me-1"></i>Recommended Dosage</div>
+                <div class="fw-semibold">{{ result.info.dosage }}</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded h-100" style="background:var(--bg-alt);border:1px solid var(--border);">
+                <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-clock me-1"></i>When to Apply</div>
+                <div class="fw-semibold" style="font-size:.9rem;">{{ result.info.timing }}</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded h-100" style="background:var(--bg-alt);border:1px solid var(--border);">
+                <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-lightbulb me-1"></i>Notes</div>
+                <div style="font-size:.88rem;color:var(--text-muted);">{{ result.info.notes }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Top 3 with Confidence Bars -->
+        {% if result.recommendations|length > 1 %}
+        <div class="card p-3 mb-4">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-ranking-star me-1"></i> All Recommendations (by confidence)
+          </h6>
+          {% for rec in result.recommendations %}
+            <div class="confidence-bar-wrap confidence-bar">
+              <div class="confidence-bar-label">
+                <span>
+                  {% if forloop.first %}
+                    <i class="fa-solid fa-medal text-warning me-1"></i>
+                  {% elif forloop.counter == 2 %}
+                    <i class="fa-solid fa-medal me-1" style="color:#aaa;"></i>
+                  {% else %}
+                    <i class="fa-solid fa-medal me-1" style="color:#cd7f32;"></i>
+                  {% endif %}
+                  <strong>{{ rec.fertilizer }}</strong>
+                  {% if rec.info.npk %}
+                    <span class="text-muted ms-1" style="font-size:.78rem;">({{ rec.info.npk }})</span>
+                  {% endif %}
+                  {% if forloop.first %}
+                    <span class="badge ms-1"
+                          style="background:var(--accent);color:#fff;font-size:.7rem;">Best Match</span>
+                  {% endif %}
+                </span>
+                <span class="text-muted">{{ rec.probability }}%</span>
+              </div>
+              <div class="progress" style="height:10px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width:{{ rec.probability }}%;">
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Action buttons -->
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'predict' %}" class="btn btn-agro">
+            <i class="fa-solid fa-seedling me-2"></i>Get Crop Recommendation
+          </a>
+          <a href="{% url 'cost_calculator' %}?crop={{ result.inputs.crop_type|lower }}"
+             class="btn btn-outline-agro">
+            <i class="fa-solid fa-calculator me-2"></i>Cost Calculator
+          </a>
+          <a href="{% url 'fertilizer' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-rotate-left me-2"></i>New Search
+          </a>
+        </div>
+      </div>
+
+      {% else %}
+      <!-- Empty state -->
+      <div class="card h-100 d-flex align-items-center justify-content-center"
+           style="min-height:420px;">
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="fa-solid fa-bottle-droplet"></i></div>
+          <h5>Fill the form to get started</h5>
+          <p class="text-muted">
+            Our ML model trained on 8,000 field records will recommend the best
+            fertilizer based on your exact conditions.
+          </p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div><!-- row -->
+</div>
+{% endblock %}

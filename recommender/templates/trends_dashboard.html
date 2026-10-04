@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}India Crop Trends — AgroSense{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-chart-line text-success me-2"></i>India Crop Production Trends
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        National year-wise production, area & yield data from 1997–2015 (APY dataset).
+      </p>
+    </div>
+    <a href="{% url 'district_benchmark' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-map-location-dot me-1"></i>District Benchmark
+    </a>
+  </div>
+
+  <!-- Crop selector -->
+  <div class="card p-3 mb-4">
+    <form method="GET" action="{% url 'trends' %}" class="d-flex align-items-end gap-3 flex-wrap">
+      <div style="flex:1;min-width:220px;">
+        <label class="form-label fw-semibold mb-1">Select Crop</label>
+        <select name="crop" class="form-select" id="cropSelect">
+          {% for c in all_crops %}
+            <option value="{{ c }}" {% if selected_crop == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-agro">
+        <i class="fa-solid fa-chart-line me-2"></i>Update Charts
+      </button>
+    </form>
+  </div>
+
+  {% if trend_json != '{}' and trend_json != 'null' %}
+    <!-- Chart cards -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-8">
+        <div class="card p-3 h-100">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-industry me-1"></i>Production Trend — {{ selected_crop }}
+            <span class="text-muted fw-normal" style="font-size:.8rem;">(thousand tonnes)</span>
+          </h6>
+          <div style="position:relative;height:300px;">
+            <canvas id="productionChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card p-3 h-100">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-chart-simple me-1"></i>Yield Trend
+            <span class="text-muted fw-normal" style="font-size:.8rem;">(tonnes/ha)</span>
+          </h6>
+          <div style="position:relative;height:300px;">
+            <canvas id="yieldChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="card p-3 h-100">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-ruler-combined me-1"></i>Area Harvested
+            <span class="text-muted fw-normal" style="font-size:.8rem;">(thousand ha)</span>
+          </h6>
+          <div style="position:relative;height:260px;">
+            <canvas id="areaChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats panel -->
+      <div class="col-lg-6">
+        <div class="card p-3 h-100">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-ranking-star me-1"></i>Key Statistics
+          </h6>
+          <div id="statsPanel" class="row g-2">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top States table -->
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3" style="color:var(--accent);">
+        <i class="fa-solid fa-map me-1"></i>Top Producing States — {{ selected_crop }}
+      </h6>
+      <div id="stateTable">
+        <div class="text-muted text-center py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>Loading state data...</div>
+      </div>
+    </div>
+
+  {% else %}
+    <div class="card p-5 text-center" style="min-height:350px;">
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-chart-line"></i></div>
+        <h5>No trend data available</h5>
+        <p class="text-muted">Select a crop and click "Update Charts" to see production trends.</p>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const TREND = {{ trend_json|safe }};
+
+function isDark() {
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
+function gridColor() {
+  return isDark() ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+}
+
+function textColor() {
+  return isDark() ? '#c9c9b8' : '#6b6b5a';
+}
+
+const ACCENT = '#1c7a42';
+const AMBER  = '#d97706';
+const BLUE   = '#2563eb';
+
+function makeChart(id, label, data, years, color, type = 'line') {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  return new Chart(ctx, {
+    type: type,
+    data: {
+      labels: years,
+      datasets: [{
+        label: label,
+        data: data,
+        borderColor: color,
+        backgroundColor: type === 'bar'
+          ? color + '99'
+          : function(ctx2) {
+              const chart = ctx2.chart;
+              const {ctx: c, chartArea} = chart;
+              if (!chartArea) return color + '33';
+              const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              gradient.addColorStop(0, color + '55');
+              gradient.addColorStop(1, color + '00');
+              return gradient;
+            },
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        fill: type === 'line',
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor(), font: { size: 11 }, maxRotation: 45 },
+          grid: { color: gridColor() }
+        },
+        y: {
+          ticks: { color: textColor(), font: { size: 11 } },
+          grid: { color: gridColor() }
+        }
+      }
+    }
+  });
+}
+
+if (TREND && TREND.years && TREND.years.length) {
+  const years = TREND.years.map(String);
+
+  // Production chart (multi-series)
+  const ctx1 = document.getElementById('productionChart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [{
+          label: 'Production (000 T)',
+          data: TREND.production,
+          borderColor: ACCENT,
+          backgroundColor: ACCENT + '22',
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 7,
+          yAxisID: 'y',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+          x: { ticks: { color: textColor(), font: { size: 11 } }, grid: { color: gridColor() } },
+          y: { ticks: { color: textColor(), font: { size: 11 } }, grid: { color: gridColor() } }
+        }
+      }
+    });
+  }
+
+  makeChart('yieldChart', 'Yield (t/ha)', TREND.yield, years, AMBER);
+  makeChart('areaChart', 'Area (000 ha)', TREND.area, years, BLUE, 'bar');
+
+  // Stats panel
+  function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+  function maxIdx(arr) { return arr.indexOf(Math.max(...arr)); }
+  function minIdx(arr) { return arr.indexOf(Math.min(...arr)); }
+
+  const prod = TREND.production || [];
+  const yld  = TREND.yield || [];
+  const area = TREND.area || [];
+
+  const stats = [
+    { label:'Peak Production', value: Math.max(...prod).toFixed(0) + ' 000 T', sub: 'in ' + years[maxIdx(prod)], color: ACCENT },
+    { label:'Avg Production',  value: avg(prod).toFixed(0) + ' 000 T', sub: 'across all years', color: ACCENT },
+    { label:'Best Yield',      value: Math.max(...yld).toFixed(2) + ' t/ha', sub: 'in ' + years[maxIdx(yld)], color: AMBER },
+    { label:'Avg Yield',       value: avg(yld).toFixed(2) + ' t/ha', sub: 'across all years', color: AMBER },
+    { label:'Peak Area',       value: Math.max(...area).toFixed(0) + ' 000 ha', sub: 'in ' + years[maxIdx(area)], color: BLUE },
+    { label:'Avg Area',        value: avg(area).toFixed(0) + ' 000 ha', sub: 'across all years', color: BLUE },
+  ];
+
+  const panel = document.getElementById('statsPanel');
+  if (panel) {
+    panel.innerHTML = stats.map(s => `
+      <div class="col-6">
+        <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+          <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;">${s.label}</div>
+          <div class="fw-bold" style="font-size:1.05rem;color:${s.color};">${s.value}</div>
+          <div class="text-muted" style="font-size:.72rem;">${s.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // State table from TREND.by_state
+  const stateDiv = document.getElementById('stateTable');
+  if (stateDiv && TREND.by_state) {
+    const entries = Object.entries(TREND.by_state)
+      .map(([state, val]) => ({ state, production: val.production || 0, yield: val.yield || 0 }))
+      .sort((a,b) => b.production - a.production)
+      .slice(0, 15);
+
+    const maxProd = Math.max(...entries.map(e=>e.production));
+    stateDiv.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:.87rem;">
+          <thead style="font-size:.75rem;text-transform:uppercase;color:var(--text-muted);background:var(--bg-alt);">
+            <tr><th>State</th><th>Avg Production (000 T)</th><th class="text-end">Avg Yield (t/ha)</th></tr>
+          </thead>
+          <tbody>
+            ${entries.map((e,i) => `
+              <tr>
+                <td>
+                  <span style="display:inline-block;width:20px;text-align:center;font-size:.75rem;color:var(--text-muted);">${i+1}</span>
+                  ${e.state}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:8px;">
+                      <div class="progress-bar" style="width:${(e.production/maxProd*100).toFixed(1)}%;background:${ACCENT};"></div>
+                    </div>
+                    <span class="fw-semibold" style="min-width:60px;text-align:right;">${e.production.toFixed(0)}</span>
+                  </div>
+                </td>
+                <td class="text-end fw-semibold" style="color:${AMBER};">${e.yield.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } else if (stateDiv) {
+    stateDiv.innerHTML = '<p class="text-muted text-center py-3">No state-level breakdown available.</p>';
+  }
+
+} // end if TREND
+</script>
+{% endblock %}

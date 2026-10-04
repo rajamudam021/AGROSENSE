@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Global Agriculture Comparison — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-earth-asia text-success me-2"></i>Global Agriculture Comparison
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        FAO data 1961–2019 · 5 continents · Africa, Asia, Americas, Europe, Oceania
+      </p>
+    </div>
+    <a href="{% url 'corn_comparison' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-scale-balanced me-1"></i>US vs India Corn
+    </a>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+  {% else %}
+
+  <!-- Filters -->
+  <div class="card p-3 mb-4">
+    <form method="GET" action="{% url 'global_agriculture' %}" class="row g-3 align-items-end">
+      <div class="col-sm-6 col-md-4">
+        <label class="form-label fw-semibold" style="font-size:.82rem;">Crop / Item</label>
+        <select name="item" class="form-select form-select-sm">
+          {% for item in all_items %}
+            <option value="{{ item }}" {% if item == selected_item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <label class="form-label fw-semibold" style="font-size:.82rem;">Metric</label>
+        <select name="element" class="form-select form-select-sm">
+          {% for el in element_choices %}
+            <option value="{{ el }}" {% if el == selected_element %}selected{% endif %}>{{ el }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-agro btn-sm">
+          <i class="fa-solid fa-magnifying-glass me-1"></i>Compare
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Continental trend chart -->
+  <div class="card p-3 mb-4">
+    <h6 class="fw-bold mb-3" style="color:var(--accent);">
+      <i class="fa-solid fa-chart-line me-1"></i>{{ selected_item }} — {{ selected_element }}
+      <span class="fw-normal text-muted" style="font-size:.78rem;">by continent (1961–2019)</span>
+      <span class="badge ms-2" style="background:var(--accent-light);color:var(--accent-dark);font-size:.7rem;">
+        {{ unit }}
+      </span>
+    </h6>
+    <div style="position:relative;height:340px;">
+      <canvas id="continentChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Top countries -->
+  {% if top_countries %}
+  <div class="card p-3">
+    <h6 class="fw-bold mb-3" style="color:var(--accent);">
+      <i class="fa-solid fa-trophy me-1"></i>Top 20 Countries — {{ selected_item }} {{ selected_element }}
+      <span class="fw-normal text-muted" style="font-size:.78rem;">(5-year average)</span>
+    </h6>
+    <div class="row g-2">
+      {% for c in top_countries %}
+      <div class="col-sm-6 col-lg-4">
+        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:var(--bg-alt);">
+          <span class="fw-bold text-muted" style="width:24px;font-size:.75rem;">#{{ forloop.counter }}</span>
+          <span class="fw-semibold" style="font-size:.83rem;flex:1;">{{ c.country }}</span>
+          <span class="fw-bold" style="color:var(--accent);font-size:.85rem;">{{ c.value|floatformat:0 }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mt-2 text-muted" style="font-size:.73rem;">
+      <i class="fa-solid fa-circle-info me-1"></i>Unit: {{ unit }}. Source: FAO continental CSVs.
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const YEARS      = {{ years_json|safe }};
+const CONTINENTS = {{ continent_json|safe }};
+
+const PALETTE = {
+  'Africa':   '#d97706',
+  'Asia':     '#1c7a42',
+  'Americas': '#2563eb',
+  'Europe':   '#7c3aed',
+  'Oceania':  '#dc2626',
+};
+
+(function() {
+  const ctx = document.getElementById('continentChart');
+  if (!ctx) return;
+
+  const datasets = Object.entries(CONTINENTS).map(([continent, values]) => ({
+    label:           continent,
+    data:            values,
+    borderColor:     PALETTE[continent] || '#6b7280',
+    backgroundColor: (PALETTE[continent] || '#6b7280') + '22',
+    borderWidth:     2,
+    pointRadius:     2,
+    tension:         0.3,
+    fill:            false,
+  }));
+
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: YEARS, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 15, font: { size: 10 } } },
+        y: { ticks: { font: { size: 10 } } },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

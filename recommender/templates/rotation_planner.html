@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Crop Rotation Planner — AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-rotate text-success me-2"></i>Crop Rotation Planner
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Data-driven rotation advice using NPK removal rates &amp; agronomic science.
+        <span class="badge ms-1" style="background:var(--accent-light);color:var(--accent-dark);font-size:.72rem;">
+          29 crops · IPNI/FAO nutrient data
+        </span>
+      </p>
+    </div>
+    <a href="{% url 'soil_tracker' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-layer-group me-1"></i>Soil Nutrient Tracker
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Selector -->
+    <div class="col-lg-4">
+      <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-seedling me-1"></i>Select Current Crop
+        </h6>
+        <form method="GET" action="{% url 'rotation_planner' %}">
+          <select name="crop" class="form-select form-select-sm mb-3" onchange="this.form.submit()">
+            <option value="">-- Choose crop --</option>
+            {% for c in all_crops %}
+              <option value="{{ c }}" {% if c == selected_crop %}selected{% endif %}>{{ c|title }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-agro btn-sm w-100">
+            <i class="fa-solid fa-rotate me-1"></i>Get Rotation Plan
+          </button>
+        </form>
+
+        {% if selected_crop %}
+        <!-- Current crop NPK card -->
+        <div class="mt-3 p-3 rounded" style="background:var(--bg-alt);border:1px solid var(--border);">
+          <div class="fw-bold mb-2" style="font-size:.85rem;color:var(--accent);">
+            <i class="fa-solid fa-info-circle me-1"></i>{{ selected_crop|title }} — Nutrient Removal
+          </div>
+          {% for c in npk_table %}
+            {% if c.crop|lower == selected_crop|lower %}
+            <div class="d-flex gap-2 flex-wrap">
+              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.75rem;">
+                N: {{ c.N }} kg/t
+              </span>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.75rem;">
+                P: {{ c.P }} kg/t
+              </span>
+              <span class="badge" style="background:#dbeafe;color:#1e3a5f;font-size:.75rem;">
+                K: {{ c.K }} kg/t
+              </span>
+              <span class="badge" style="background:var(--accent-light);color:var(--accent-dark);font-size:.75rem;">
+                {{ c.category }}
+              </span>
+              {% if c.legume %}
+              <span class="badge" style="background:#f0fdf4;color:#14532d;font-size:.75rem;">
+                <i class="fa-solid fa-leaf me-1"></i>N-fixing legume
+              </span>
+              {% endif %}
+            </div>
+            {% endif %}
+          {% endfor %}
+          <div class="mt-2" style="font-size:.75rem;color:var(--text-muted);">
+            NPK removal per tonne of produce harvested (IPNI/FAO reference values).
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- NPK Reference table -->
+      <div class="card p-3 mt-3">
+        <h6 class="fw-bold mb-2" style="color:var(--accent);font-size:.85rem;">
+          <i class="fa-solid fa-table me-1"></i>All Crops NPK Reference
+        </h6>
+        <div style="max-height:320px;overflow-y:auto;">
+          <table class="table table-hover align-middle mb-0" style="font-size:.78rem;">
+            <thead style="position:sticky;top:0;background:var(--bg-alt);font-size:.7rem;text-transform:uppercase;">
+              <tr>
+                <th>Crop</th>
+                <th class="text-center" style="color:#16a34a;">N</th>
+                <th class="text-center" style="color:#d97706;">P</th>
+                <th class="text-center" style="color:#2563eb;">K</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in npk_table %}
+              <tr {% if row.crop|lower == selected_crop|lower %}style="background:var(--accent-light);"{% endif %}>
+                <td class="fw-semibold">
+                  {{ row.crop }}
+                  {% if row.legume %}
+                    <i class="fa-solid fa-leaf text-success ms-1" style="font-size:.65rem;" title="N-fixing legume"></i>
+                  {% endif %}
+                </td>
+                <td class="text-center">{{ row.N }}</td>
+                <td class="text-center">{{ row.P }}</td>
+                <td class="text-center">{{ row.K }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="col-lg-8">
+      {% if selected_crop and suggestions %}
+      <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-list-ol me-1"></i>
+          Recommended Rotation After <span class="text-success">{{ selected_crop|title }}</span>
+        </h6>
+        {% for s in suggestions %}
+        <div class="p-3 rounded mb-3"
+             style="border-left:4px solid {% if s.is_legume %}#16a34a{% else %}#2563eb{% endif %};
+                    background:var(--bg-alt);">
+          <div class="d-flex align-items-start gap-3">
+            <div style="width:40px;height:40px;border-radius:.5rem;
+                        background:{% if s.is_legume %}#dcfce7{% else %}#dbeafe{% endif %};
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:1.2rem;flex-shrink:0;">
+              <i class="fa-solid {% if s.is_legume %}fa-leaf{% else %}fa-seedling{% endif %}"
+                 style="color:{% if s.is_legume %}#16a34a{% else %}#2563eb{% endif %};"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fw-black" style="font-size:1rem;">{{ s.crop }}</span>
+                <span class="badge" style="font-size:.65rem;
+                  background:{% if s.is_legume %}#dcfce7{% else %}#dbeafe{% endif %};
+                  color:{% if s.is_legume %}#14532d{% else %}#1e3a5f{% endif %};">
+                  {% if s.is_legume %}Legume · N-fixing{% else %}Non-legume{% endif %}
+                </span>
+              </div>
+              <p class="mb-1" style="font-size:.85rem;color:var(--text);">{{ s.reason }}</p>
+              <div class="d-flex gap-3 flex-wrap" style="font-size:.78rem;">
+                <span style="color:var(--text-muted);">
+                  <i class="fa-solid fa-circle-arrow-up text-success me-1"></i>
+                  Replenishes: <strong>{{ s.replenishes }}</strong>
+                </span>
+                <span style="color:var(--text-muted);">
+                  N removes: <strong>{{ s.N_removes }} kg/t</strong>
+                </span>
+                <span style="color:var(--text-muted);">
+                  P: <strong>{{ s.P_removes }} kg/t</strong>
+                </span>
+                <span style="color:var(--text-muted);">
+                  K: <strong>{{ s.K_removes }} kg/t</strong>
+                </span>
+              </div>
+            </div>
+            <div class="text-center" style="min-width:48px;">
+              <div class="text-muted" style="font-size:.65rem;">Priority</div>
+              <div class="fw-black" style="font-size:1.3rem;color:var(--accent);">
+                #{{ forloop.counter }}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="p-2 rounded mt-1" style="background:#fef9c3;border:1px solid #fde68a;font-size:.8rem;">
+          <i class="fa-solid fa-lightbulb me-1" style="color:#d97706;"></i>
+          <strong>Tip:</strong> Rotate legumes every 2–3 seasons to break pest cycles and restore soil N.
+          Track cumulative N/P/K balance in the
+          <a href="{% url 'soil_tracker' %}" class="fw-semibold">Soil Nutrient Tracker</a>.
+        </div>
+      </div>
+
+      {% elif selected_crop %}
+        <div class="card p-4 text-center text-muted">
+          <i class="fa-solid fa-circle-exclamation fa-2x mb-2"></i>
+          <p>No rotation data found for "{{ selected_crop }}". Try another crop.</p>
+        </div>
+      {% else %}
+        <div class="card p-4">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-book-open me-1"></i>How Crop Rotation Works
+          </h6>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="p-3 rounded h-100" style="background:#dcfce7;border:1px solid #86efac;">
+                <div class="fw-bold mb-1" style="color:#14532d;"><i class="fa-solid fa-leaf me-1"></i>Legume Effect</div>
+                <p style="font-size:.83rem;color:#166534;margin:0;">
+                  Legumes (soybean, chickpea, lentil) fix atmospheric nitrogen into the soil,
+                  reducing fertilizer needs for the next cereal crop.
+                </p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-3 rounded h-100" style="background:#dbeafe;border:1px solid #93c5fd;">
+                <div class="fw-bold mb-1" style="color:#1e3a5f;"><i class="fa-solid fa-shield-halved me-1"></i>Pest Break</div>
+                <p style="font-size:.83rem;color:#1e40af;margin:0;">
+                  Different crops have different pest and disease cycles.
+                  Rotation prevents build-up of soil-borne pathogens specific to any one crop.
+                </p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-3 rounded h-100" style="background:#fef3c7;border:1px solid #fde68a;">
+                <div class="fw-bold mb-1" style="color:#92400e;"><i class="fa-solid fa-flask me-1"></i>Nutrient Balance</div>
+                <p style="font-size:.83rem;color:#b45309;margin:0;">
+                  Each crop removes different ratios of N, P, K.
+                  Rotating crops with complementary nutrient demands maintains soil fertility.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 text-muted" style="font-size:.82rem;">
+            <strong>Select a crop</strong> on the left to get personalised rotation recommendations
+            ranked by agronomic benefit.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

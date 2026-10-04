@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Crop Anomaly Detection — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Crop Production Anomaly Detection
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Z-score based detection of abnormal yield crashes &amp; spikes across India districts.
+        Source: APY dataset (345K rows).
+      </p>
+    </div>
+    <a href="{% url 'climate_forecast' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-temperature-half me-1"></i>Climate Forecast
+    </a>
+  </div>
+
+  <!-- Filter form -->
+  <div class="card mb-4 p-4">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-sm-4">
+        <label class="form-label fw-600">State <span class="text-muted fw-normal">(leave blank for all India)</span></label>
+        <select name="state" class="form-select">
+          <option value="">— All States —</option>
+          {% for s in states %}
+            <option value="{{ s }}" {% if s == selected_state %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label fw-600">Crop <span class="text-muted fw-normal">(optional)</span></label>
+        <select name="crop" class="form-select">
+          <option value="">— All Crops —</option>
+          {% for c in crops %}
+            <option value="{{ c }}" {% if c == selected_crop %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-2">
+        <label class="form-label fw-600">Z-threshold</label>
+        <select name="threshold" class="form-select">
+          <option value="1.5" {% if threshold == 1.5 %}selected{% endif %}>1.5 (wider)</option>
+          <option value="2.0" {% if threshold == 2.0 %}selected{% endif %}>2.0 (standard)</option>
+          <option value="2.5" {% if threshold == 2.5 %}selected{% endif %}>2.5 (strict)</option>
+          <option value="3.0" {% if threshold == 3.0 %}selected{% endif %}>3.0 (extreme only)</option>
+        </select>
+      </div>
+      <div class="col-sm-3">
+        <button type="submit" class="btn btn-agro w-100">
+          <i class="fa-solid fa-magnifying-glass me-1"></i>Detect Anomalies
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if not selected_state and not selected_crop %}
+    <div class="alert alert-info">
+      <i class="fa-solid fa-circle-info me-2"></i>
+      Select a <strong>State</strong> and/or <strong>Crop</strong> above to run anomaly detection.
+      Example: Madhya Pradesh + Cotton, or just Rajasthan (all crops).
+    </div>
+  {% endif %}
+
+  {% if error %}
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+  {% endif %}
+
+  {% if summary %}
+  <!-- Summary KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid var(--accent)!important;">
+        <div class="text-muted small fw-bold">Records Analysed</div>
+        <div style="font-size:2rem;font-weight:900;color:var(--accent);">{{ summary.total_rows|default:0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">district-crop-year rows</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #f59e0b!important;">
+        <div class="text-muted small fw-bold">Anomalies Found</div>
+        <div style="font-size:2rem;font-weight:900;color:#f59e0b;">{{ summary.anomaly_count|default:0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">|Z| ≥ {{ summary.threshold }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #ef4444!important;">
+        <div class="text-muted small fw-bold">Yield Crashes</div>
+        <div style="font-size:2rem;font-weight:900;color:#ef4444;">{{ summary.crash_count|default:0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">below normal (Z &lt; 0)</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #22c55e!important;">
+        <div class="text-muted small fw-bold">Yield Spikes</div>
+        <div style="font-size:2rem;font-weight:900;color:#22c55e;">{{ summary.spike_count|default:0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">above normal (Z &gt; 0)</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if anomalies %}
+
+  <!-- Z-score chart -->
+  <div class="card mb-4 p-4">
+    <h6 class="fw-bold mb-3"><i class="fa-solid fa-chart-bar me-2 text-warning"></i>Top Anomalies by Z-score</h6>
+    <canvas id="anomalyChart" height="80"></canvas>
+  </div>
+
+  <!-- Anomaly table -->
+  <div class="card p-4">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <h6 class="fw-bold mb-0">Detailed Anomaly Records (top {{ anomalies|length }})</h6>
+      <span class="badge" style="background:var(--accent-light);color:var(--accent-dark);">
+        Z-threshold: {{ threshold }}
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead style="background:var(--surface2);font-size:.82rem;">
+          <tr>
+            <th>#</th>
+            <th>State</th>
+            <th>District</th>
+            <th>Crop</th>
+            <th>Year</th>
+            <th>Season</th>
+            <th>Yield</th>
+            <th>Avg Yield</th>
+            <th>Z-score</th>
+            <th>Deviation</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody style="font-size:.85rem;">
+          {% for a in anomalies %}
+          <tr>
+            <td class="text-muted">{{ forloop.counter }}</td>
+            <td>{{ a.state }}</td>
+            <td><strong>{{ a.district }}</strong></td>
+            <td>{{ a.crop }}</td>
+            <td>{{ a.year }}</td>
+            <td><span class="badge bg-secondary">{{ a.season|default:"—" }}</span></td>
+            <td>{{ a.yield }}</td>
+            <td class="text-muted">{{ a.group_mean }}</td>
+            <td>
+              <strong class="{% if a.z_score < 0 %}text-danger{% else %}text-success{% endif %}">
+                {{ a.z_score }}
+              </strong>
+            </td>
+            <td>
+              <span class="{% if a.pct_dev < 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
+                {% if a.pct_dev > 0 %}+{% endif %}{{ a.pct_dev }}%
+              </span>
+            </td>
+            <td>
+              {% if a.direction == 'crash' %}
+                <span class="badge bg-danger"><i class="fa-solid fa-arrow-down me-1"></i>Crash</span>
+              {% else %}
+                <span class="badge bg-success"><i class="fa-solid fa-arrow-up me-1"></i>Spike</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted mt-2 mb-0" style="font-size:.78rem;">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      Anomalies detected using Z-score per district-crop group (≥ 3 years of data required).
+      Possible causes: drought, flood, pest outbreak, policy changes.
+    </p>
+  </div>
+
+  {% elif selected_state or selected_crop %}
+    {% if not error %}
+    <div class="alert alert-success">
+      <i class="fa-solid fa-circle-check me-2"></i>
+      No significant anomalies detected for the selected filters at Z ≥ {{ threshold }}.
+      Try lowering the threshold to 1.5 to find subtler deviations.
+    </div>
+    {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if anomalies %}
+<script>
+(function () {
+  const raw = {{ chart_json|safe }};
+  const colors = raw.directions.map(d => d === 'crash' ? 'rgba(239,68,68,0.8)' : 'rgba(34,197,94,0.8)');
+  const ctx = document.getElementById('anomalyChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: raw.labels,
+      datasets: [{
+        label: 'Z-score',
+        data: raw.z_scores,
+        backgroundColor: colors,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {display: false},
+        tooltip: {
+          callbacks: {
+            label: ctx => `Z-score: ${ctx.parsed.y.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        x: {ticks: {font: {size: 10}, maxRotation: 45}},
+        y: {
+          title: {display: true, text: 'Z-score'},
+          grid: {color: 'rgba(0,0,0,0.05)'}
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Crop Portfolio Optimizer — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-layer-group text-success me-2"></i>Multi-Crop Portfolio Optimizer
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Given your farm size &amp; budget, find the ideal crop mix to maximize profit while managing risk.
+      </p>
+    </div>
+    <a href="{% url 'climate_forecast' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-temperature-half me-1"></i>Climate Forecast
+    </a>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Input panel -->
+    <div class="col-lg-4">
+      <div class="card p-4 h-100">
+        <h6 class="fw-bold mb-3"><i class="fa-solid fa-sliders me-2 text-success"></i>Farm Parameters</h6>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-600">Farm Size (acres)</label>
+            <input type="number" name="farm_acres" class="form-control"
+                   value="{{ inputs.farm_acres|default:5 }}" min="0.5" max="500" step="0.5" required>
+            <div class="form-text">1 acre ≈ 0.405 hectares</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Total Cultivation Budget (₹)</label>
+            <input type="number" name="budget" class="form-control"
+                   value="{{ inputs.budget|default:50000 }}" min="5000" step="1000" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Risk Tolerance</label>
+            <select name="risk_pref" class="form-select">
+              <option value="low"    {% if inputs.risk_pref == 'low'    %}selected{% endif %}>Conservative (Cereals &amp; Pulses only)</option>
+              <option value="medium" {% if inputs.risk_pref == 'medium' or not inputs.risk_pref %}selected{% endif %}>Balanced (+ Oilseeds)</option>
+              <option value="high"   {% if inputs.risk_pref == 'high'   %}selected{% endif %}>Aggressive (All crops)</option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-600">Max Number of Crops</label>
+            <select name="max_crops" class="form-select">
+              <option value="2" {% if inputs.max_crops == 2 %}selected{% endif %}>2 crops</option>
+              <option value="3" {% if inputs.max_crops == 3 %}selected{% endif %}>3 crops</option>
+              <option value="4" {% if inputs.max_crops == 4 or not inputs.max_crops %}selected{% endif %}>4 crops</option>
+              <option value="5" {% if inputs.max_crops == 5 %}selected{% endif %}>5 crops</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-agro w-100">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Optimize Portfolio
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Result panel -->
+    <div class="col-lg-8">
+
+      {% if error %}
+        <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+      {% endif %}
+
+      {% if result %}
+
+      <!-- KPIs -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-sm-3">
+          <div class="card p-3 text-center" style="border-left:4px solid var(--accent)!important;">
+            <div class="text-muted small fw-bold">Expected Profit</div>
+            <div style="font-size:1.5rem;font-weight:900;color:var(--accent);">
+              ₹{{ result.total_profit|floatformat:0 }}
+            </div>
+            <div class="text-muted" style="font-size:.72rem;">gross profit</div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-3">
+          <div class="card p-3 text-center" style="border-left:4px solid #22c55e!important;">
+            <div class="text-muted small fw-bold">Overall ROI</div>
+            <div style="font-size:1.5rem;font-weight:900;color:#22c55e;">{{ result.overall_roi }}%</div>
+            <div class="text-muted" style="font-size:.72rem;">return on investment</div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-3">
+          <div class="card p-3 text-center" style="border-left:4px solid #3b82f6!important;">
+            <div class="text-muted small fw-bold">Budget Used</div>
+            <div style="font-size:1.5rem;font-weight:900;color:#3b82f6;">{{ result.budget_used_pct }}%</div>
+            <div class="text-muted" style="font-size:.72rem;">₹{{ result.total_cost|floatformat:0 }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-3">
+          <div class="card p-3 text-center" style="border-left:4px solid #f59e0b!important;">
+            <div class="text-muted small fw-bold">Farm Utilized</div>
+            <div style="font-size:1.5rem;font-weight:900;color:#f59e0b;">{{ result.used_acres }} ac</div>
+            <div class="text-muted" style="font-size:.72rem;">of {{ result.farm_acres }} acres</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary banner -->
+      <div class="alert" style="background:var(--accent-light);border-left:4px solid var(--accent);border-radius:.6rem;" role="alert">
+        <strong><i class="fa-solid fa-lightbulb me-1"></i>Recommendation ({{ result.risk_label }}):</strong>
+        Plant
+        {% for p in result.portfolio %}
+          <strong>{{ p.alloc_pct }}% {{ p.crop }}</strong>{% if not forloop.last %} + {% endif %}
+        {% endfor %}
+        on <strong>{{ result.used_acres }} acres</strong>
+        → expected profit <strong>₹{{ result.total_profit|floatformat:0 }}</strong>
+        ({{ result.overall_roi }}% ROI).
+      </div>
+
+      <div class="row g-4">
+        <!-- Donut chart -->
+        <div class="col-md-5">
+          <div class="card p-4 h-100 d-flex flex-column align-items-center justify-content-center">
+            <h6 class="fw-bold mb-3 text-center">Land Allocation</h6>
+            <canvas id="portfolioDonut" style="max-width:230px;max-height:230px;"></canvas>
+          </div>
+        </div>
+
+        <!-- Crop breakdown -->
+        <div class="col-md-7">
+          <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Crop Breakdown</h6>
+            {% for p in result.portfolio %}
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold">{{ p.crop }}
+                  <span class="badge ms-1 {% if p.risk == 1 %}bg-success{% elif p.risk == 2 %}bg-warning text-dark{% else %}bg-danger{% endif %}" style="font-size:.68rem;">
+                    {% if p.risk == 1 %}Low Risk{% elif p.risk == 2 %}Med Risk{% else %}High Risk{% endif %}
+                  </span>
+                </span>
+                <span class="text-success fw-bold">+₹{{ p.profit|floatformat:0 }}</span>
+              </div>
+              <div class="progress mb-1" style="height:8px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width:{{ p.alloc_pct }}%;background:var(--accent);"
+                     aria-valuenow="{{ p.alloc_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+              <div class="d-flex justify-content-between text-muted" style="font-size:.78rem;">
+                <span>{{ p.alloc_acres }} acres ({{ p.alloc_pct }}%)</span>
+                <span>{{ p.expected_yield_q }} q · ₹{{ p.price_q }}/q · Cost ₹{{ p.cost|floatformat:0 }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div><!-- /row -->
+
+      {% else %}
+      <!-- No result yet: show reference table -->
+      <div class="card p-4">
+        <h6 class="fw-bold mb-1">Reference: Crop Economics (National Averages)</h6>
+        <p class="text-muted mb-3" style="font-size:.83rem;">
+          Fill the form and click Optimize to get a personalised portfolio recommendation.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover" style="font-size:.83rem;">
+            <thead style="background:var(--surface2);">
+              <tr>
+                <th>Crop</th>
+                <th>Category</th>
+                <th>Cost/ha (₹)</th>
+                <th>Yield (q/ha)</th>
+                <th>Price (₹/q)</th>
+                <th>Profit/ha (₹)</th>
+                <th>ROI</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in all_crops %}
+              <tr>
+                <td><strong>{{ c.crop }}</strong></td>
+                <td><span class="badge bg-secondary">{{ c.category }}</span></td>
+                <td>{{ c.cost_ha|floatformat:0 }}</td>
+                <td>{{ c.yield_qha }}</td>
+                <td>{{ c.price_q }}</td>
+                <td class="{% if c.profit_ha > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                  {% if c.profit_ha > 0 %}+{% endif %}{{ c.profit_ha|floatformat:0 }}
+                </td>
+                <td class="{% if c.roi > 0 %}text-success{% else %}text-danger{% endif %}">
+                  {{ c.roi }}%
+                </td>
+                <td>
+                  <span class="badge {% if c.risk == 1 %}bg-success{% elif c.risk == 2 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                    {% if c.risk == 1 %}Low{% elif c.risk == 2 %}Med{% else %}High{% endif %}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted mt-1 mb-0" style="font-size:.75rem;">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Costs from ICAR datafile · Prices from MSP/market rates · No single crop exceeds 60% of land allocation.
+        </p>
+      </div>
+      {% endif %}
+
+    </div><!-- /col-lg-8 -->
+  </div><!-- /row -->
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if result %}
+<script>
+(function () {
+  const raw = {{ chart_json|safe }};
+  if (!raw) return;
+  const palette = [
+    'rgba(34,197,94,0.85)', 'rgba(59,130,246,0.85)',
+    'rgba(245,158,11,0.85)', 'rgba(168,85,247,0.85)',
+    'rgba(239,68,68,0.85)',  'rgba(20,184,166,0.85)',
+  ];
+  const ctx = document.getElementById('portfolioDonut').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: raw.labels,
+      datasets: [{
+        data: raw.values,
+        backgroundColor: palette.slice(0, raw.labels.length),
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '62%',
+      plugins: {
+        legend: {position: 'bottom', labels: {font: {size: 11}}},
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pct = ctx.parsed;
+              const profit = raw.profits[ctx.dataIndex];
+              return `${ctx.label}: ${pct}% · Profit ₹${profit.toLocaleString()}`;
+            }
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

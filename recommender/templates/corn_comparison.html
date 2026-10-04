@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}US vs India Corn Yield — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-scale-balanced text-success me-2"></i>US vs India — Corn / Maize Yield
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        US: USDA NASS grain yield (bu/acre → kg/ha) · India: district-level maize yield averaged to state
+      </p>
+    </div>
+    <a href="{% url 'food_security' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-bowl-rice me-1"></i>Food Security Index
+    </a>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+  {% else %}
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #2563eb!important;">
+        <div class="text-muted small fw-bold">US Latest Avg Yield</div>
+        <div style="font-size:2.2rem;font-weight:900;color:#2563eb;">{{ us_latest|floatformat:0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">kg/ha · {{ latest_yr_us }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #16a34a!important;">
+        <div class="text-muted small fw-bold">India Latest Avg Yield</div>
+        <div style="font-size:2.2rem;font-weight:900;color:#16a34a;">{{ ind_latest|floatformat:0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">kg/ha · {{ latest_yr_ind }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #d97706!important;">
+        <div class="text-muted small fw-bold">Yield Gap</div>
+        <div style="font-size:2.2rem;font-weight:900;color:#d97706;">{{ gap_pct }}%</div>
+        <div class="text-muted" style="font-size:.75rem;">US yields higher than India</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #7c3aed!important;">
+        <div class="text-muted small fw-bold">Gap (kg/ha)</div>
+        <div style="font-size:2.2rem;font-weight:900;color:#7c3aed;">
+          {{ us_latest|floatformat:0 }}−{{ ind_latest|floatformat:0 }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">= {{ us_latest|add:ind_latest|floatformat:0 }}?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- National trend chart -->
+  <div class="card p-3 mb-4">
+    <h6 class="fw-bold mb-3" style="color:var(--accent);">
+      <i class="fa-solid fa-chart-line me-1"></i>National Average Corn/Maize Yield Over Time
+    </h6>
+    <div style="position:relative;height:300px;">
+      <canvas id="nationalChart"></canvas>
+    </div>
+    <div class="mt-1 text-muted" style="font-size:.73rem;">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      US: USDA NASS corn grain yield converted to kg/ha (1 bu/acre = 62.77 kg/ha).
+      India: Crops_data.csv district yields averaged to state, then national.
+    </div>
+  </div>
+
+  <!-- State rankings -->
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3" style="color:#2563eb;">
+          <i class="fa-solid fa-flag-usa me-1"></i>Top US States — {{ latest_yr_us }}
+        </h6>
+        {% for s in us_states %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="text-muted fw-bold" style="width:20px;font-size:.75rem;">#{{ forloop.counter }}</span>
+          <span class="fw-semibold" style="font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ s.state }}
+          </span>
+          <div class="progress flex-grow-1" style="height:8px;max-width:120px;">
+            <div class="progress-bar" style="background:#2563eb;width:{% widthratio s.yield 15000 100 %}%;"></div>
+          </div>
+          <span class="fw-bold" style="font-size:.82rem;color:#2563eb;min-width:70px;text-align:right;">
+            {{ s.yield|floatformat:0 }} kg/ha
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3" style="color:#16a34a;">
+          <i class="fa-solid fa-indian-rupee-sign me-1"></i>Top Indian States — {{ latest_yr_ind }}
+        </h6>
+        {% for s in india_states %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="text-muted fw-bold" style="width:20px;font-size:.75rem;">#{{ forloop.counter }}</span>
+          <span class="fw-semibold" style="font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ s.state }}
+          </span>
+          <div class="progress flex-grow-1" style="height:8px;max-width:120px;">
+            <div class="progress-bar" style="background:#16a34a;width:{% widthratio s.yield 5000 100 %}%;"></div>
+          </div>
+          <span class="fw-bold" style="font-size:.82rem;color:#16a34a;min-width:70px;text-align:right;">
+            {{ s.yield|floatformat:0 }} kg/ha
+          </span>
+        </div>
+        {% endfor %}
+        <div class="mt-2 p-2 rounded" style="background:#dcfce7;border:1px solid #86efac;font-size:.78rem;">
+          <i class="fa-solid fa-lightbulb me-1 text-success"></i>
+          States like Punjab, Uttarakhand, and J&amp;K with better hybrid seed adoption and irrigation show higher yields.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const NAT_DATA = {{ national_chart_json|safe }};
+
+(function(){
+  const ctx = document.getElementById('nationalChart');
+  if (!ctx || !NAT_DATA) return;
+
+  const nullsafe = arr => arr.map(v => v == null ? null : v);
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: NAT_DATA.years,
+      datasets: [
+        {
+          label: 'USA (kg/ha)',
+          data: nullsafe(NAT_DATA.us),
+          borderColor: '#2563eb',
+          backgroundColor: '#2563eb22',
+          borderWidth: 2.5,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 2,
+          spanGaps: true,
+        },
+        {
+          label: 'India (kg/ha)',
+          data: nullsafe(NAT_DATA.india),
+          borderColor: '#16a34a',
+          backgroundColor: '#16a34a22',
+          borderWidth: 2.5,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 2,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: {
+          title: { display: true, text: 'Yield (kg/ha)', font: { size: 10 } },
+          ticks: { font: { size: 10 } },
+        },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

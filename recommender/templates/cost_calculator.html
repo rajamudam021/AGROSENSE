@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cost Calculator — AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-calculator text-success me-2"></i>Cost Calculator
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Estimate cultivation cost, yield, and profit based on real CACP data.
+      </p>
+    </div>
+    <a href="{% url 'fertilizer' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-bottle-droplet me-1"></i>Fertilizer Advisor
+    </a>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="card p-3 mb-4">
+    <form method="GET" action="{% url 'cost_calculator' %}" class="row g-3 align-items-end">
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label fw-semibold">Crop</label>
+        <select name="crop" class="form-select" required>
+          <option value="">-- Select crop --</option>
+          {% for c in all_crops %}
+            <option value="{{ c }}" {% if selected_crop == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label fw-semibold">State <span class="text-muted fw-normal">(optional)</span></label>
+        <select name="state" class="form-select">
+          <option value="">All India</option>
+          {% for s in all_states %}
+            <option value="{{ s }}" {% if selected_state == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label fw-semibold">Land Size (hectares)</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fa-solid fa-ruler-combined"></i></span>
+          <input type="number" name="land_size" class="form-control"
+                 value="{{ land_size }}" min="0.1" max="1000" step="0.1">
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <button type="submit" class="btn btn-agro w-100">
+          <i class="fa-solid fa-magnifying-glass me-2"></i>Calculate
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if result %}
+    <!-- Summary stat cards -->
+    <div class="row g-3 mb-4">
+      {% with r=result.0 %}
+      <div class="col-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-indian-rupee-sign me-1"></i>Avg Cost (C2)/ha</div>
+          <div class="fw-black" style="font-size:1.5rem;color:var(--accent);">₹{{ r.cost_c2|floatformat:0 }}</div>
+          <div class="text-muted" style="font-size:.78rem;">Full cost incl. family labour</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-wheat-awn me-1"></i>Avg Yield (q/ha)</div>
+          <div class="fw-black" style="font-size:1.5rem;color:var(--accent);">{{ r.yield_q_per_ha }}</div>
+          <div class="text-muted" style="font-size:.78rem;">Quintals per hectare</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-circle-dollar-to-slot me-1"></i>Total Cost</div>
+          <div class="fw-black" style="font-size:1.5rem;color:#d97706;">₹{{ r.total_cost|floatformat:0 }}</div>
+          <div class="text-muted" style="font-size:.78rem;">For {{ land_size }} ha</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small fw-bold mb-1"><i class="fa-solid fa-arrow-trend-up me-1"></i>Est. Profit</div>
+          <div class="fw-black" style="font-size:1.5rem;color:{% if r.profit_est >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+            ₹{{ r.profit_est|floatformat:0 }}
+          </div>
+          <div class="text-muted" style="font-size:.78rem;">At MSP + 20% margin</div>
+        </div>
+      </div>
+      {% endwith %}
+    </div>
+
+    <!-- Data table -->
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3" style="color:var(--accent);">
+        <i class="fa-solid fa-table me-1"></i>
+        Cost Details — {{ selected_crop }}{% if selected_state %} · {{ selected_state }}{% endif %}
+      </h6>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:.88rem;">
+          <thead style="background:var(--bg-alt);color:var(--text-muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;">
+            <tr>
+              <th>State</th>
+              <th>Season</th>
+              <th class="text-end">Cost A2+FL<br><span style="font-weight:400;">(₹/ha)</span></th>
+              <th class="text-end">Cost C2<br><span style="font-weight:400;">(₹/ha)</span></th>
+              <th class="text-end">Cost/Quintal<br><span style="font-weight:400;">(₹)</span></th>
+              <th class="text-end">Yield<br><span style="font-weight:400;">(q/ha)</span></th>
+              <th class="text-end">Total Cost<br><span style="font-weight:400;">({{ land_size }} ha)</span></th>
+              <th class="text-end">Est. Profit<br><span style="font-weight:400;">({{ land_size }} ha)</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in result %}
+            <tr>
+              <td><span class="badge rounded-pill px-2" style="background:var(--accent-light);color:var(--accent-dark);">{{ r.state }}</span></td>
+              <td>{{ r.season }}</td>
+              <td class="text-end">₹{{ r.cost_a2fl|floatformat:0 }}</td>
+              <td class="text-end fw-semibold">₹{{ r.cost_c2|floatformat:0 }}</td>
+              <td class="text-end">₹{{ r.cost_per_quintal|floatformat:0 }}</td>
+              <td class="text-end">{{ r.yield_q_per_ha }}</td>
+              <td class="text-end text-warning fw-semibold">₹{{ r.total_cost|floatformat:0 }}</td>
+              <td class="text-end fw-bold" style="color:{% if r.profit_est >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+                ₹{{ r.profit_est|floatformat:0 }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-2 text-muted" style="font-size:.75rem;">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Cost A2+FL = paid-out cost + imputed value of family labour.
+        Cost C2 = comprehensive cost including imputed rent and interest on owned capital.
+        Revenue estimated at Cost/Quintal × Yield × 1.2 (20% above cost).
+        Source: CACP (Commission for Agricultural Costs and Prices).
+      </div>
+    </div>
+
+  {% elif selected_crop %}
+    <div class="card p-5 text-center">
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h5>No data found</h5>
+        <p class="text-muted">No cost data available for <strong>{{ selected_crop }}</strong>{% if selected_state %} in {{ selected_state }}{% endif %}. Try a different combination.</p>
+      </div>
+    </div>
+  {% else %}
+    <div class="card p-5 text-center" style="min-height:380px;">
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-calculator"></i></div>
+        <h5>Select a crop to get started</h5>
+        <p class="text-muted">
+          View cultivation costs, yield estimates, and profit projections based on official
+          CACP data for Indian crops across different states and seasons.
+        </p>
+        <div class="row g-3 mt-2 justify-content-center">
+          <div class="col-6 col-sm-4 col-lg-2">
+            <a href="?crop=Rice&land_size=1" class="btn btn-outline-agro btn-sm w-100">Rice</a>
+          </div>
+          <div class="col-6 col-sm-4 col-lg-2">
+            <a href="?crop=Wheat&land_size=1" class="btn btn-outline-agro btn-sm w-100">Wheat</a>
+          </div>
+          <div class="col-6 col-sm-4 col-lg-2">
+            <a href="?crop=Maize&land_size=1" class="btn btn-outline-agro btn-sm w-100">Maize</a>
+          </div>
+          <div class="col-6 col-sm-4 col-lg-2">
+            <a href="?crop=Cotton&land_size=1" class="btn btn-outline-agro btn-sm w-100">Cotton</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Action links -->
+  <div class="d-flex gap-2 flex-wrap mt-4">
+    <a href="{% url 'predict' %}" class="btn btn-agro">
+      <i class="fa-solid fa-seedling me-2"></i>Crop Predictor
+    </a>
+    <a href="{% url 'fertilizer' %}" class="btn btn-outline-agro">
+      <i class="fa-solid fa-bottle-droplet me-2"></i>Fertilizer Advisor
+    </a>
+    <a href="{% url 'trends' %}" class="btn btn-outline-agro">
+      <i class="fa-solid fa-chart-line me-2"></i>India Trends
+    </a>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sign Up — AgroSense{% endblock %}
+
+{% block content %}
+<div class="auth-viewport">
+
+  <!-- ── Left panel: dark forest green with marketing copy ── -->
+  <div class="auth-left">
+    <div class="auth-left-image"
+         style="background-image:url('{% static 'images/carousel3.png' %}');"></div>
+    <div class="auth-left-content">
+      <h2>Start Farming<br>Smarter Today</h2>
+      <p>
+        Create your free AgroSense account and get AI-powered crop recommendations,
+        soil analysis, and profit estimates — all in one dashboard.
+      </p>
+      <ul>
+        <li><i class="fa-solid fa-circle-check"></i>Personalised crop suggestions</li>
+        <li><i class="fa-solid fa-circle-check"></i>Save &amp; export prediction history</li>
+        <li><i class="fa-solid fa-circle-check"></i>Market prices &amp; farming calendar</li>
+        <li><i class="fa-solid fa-circle-check"></i>100% free, no credit card needed</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── Right panel: clean signup form ── -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+
+      <!-- Logo -->
+      <a class="auth-logo" href="{% url 'home' %}">
+        <span class="leaf-icon"><i class="fa-solid fa-leaf"></i></span>
+        Agro<span class="brand-sense">Sense</span>
+      </a>
+
+      <h2>Create account</h2>
+      <p class="auth-sub">Join thousands of Indian farmers using AI insights</p>
+
+      <!-- Error messages -->
+      {% if messages %}
+        {% for message in messages %}
+          {% if message.tags == 'error' or message.tags == 'danger' %}
+            <div class="auth-error">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              {{ message }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" id="signupForm" novalidate>
+        {% csrf_token %}
+
+        <!-- Full Name -->
+        <div class="mb-3">
+          <label class="form-label" for="signupName">Full Name</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-regular fa-user"></i>
+            </span>
+            <input type="text" id="signupName" name="name"
+                   class="form-control"
+                   placeholder="e.g. Ramesh Kumar"
+                   autocomplete="name" required>
+          </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="mb-3">
+          <label class="form-label" for="signupPhone">Phone</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-solid fa-phone"></i>
+            </span>
+            <input type="tel" id="signupPhone" name="phone"
+                   class="form-control"
+                   placeholder="e.g. 9876543210"
+                   autocomplete="tel">
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="mb-3">
+          <label class="form-label" for="signupEmail">Email</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-regular fa-envelope"></i>
+            </span>
+            <input type="email" id="signupEmail" name="email"
+                   class="form-control"
+                   placeholder="your@email.com"
+                   autocomplete="email">
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-3">
+          <label class="form-label" for="pwd1">
+            Password <span style="color:var(--text-faint);font-weight:400;">(min 6 chars)</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-solid fa-key"></i>
+            </span>
+            <input type="password" id="pwd1" name="password"
+                   class="form-control"
+                   placeholder="Create a password"
+                   autocomplete="new-password">
+            <button class="btn btn-pwd-toggle"
+                    type="button" id="togglePwd1"
+                    title="Show / hide password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="mb-3">
+          <label class="form-label" for="pwd2">Confirm Password</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-solid fa-shield"></i>
+            </span>
+            <input type="password" id="pwd2" name="confirm_password"
+                   class="form-control"
+                   placeholder="Repeat your password"
+                   autocomplete="new-password">
+            <button class="btn btn-pwd-toggle"
+                    type="button" id="togglePwd2"
+                    title="Show / hide password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Terms checkbox -->
+        <div class="mb-4">
+          <div class="form-check">
+            <input type="checkbox" id="agree" class="form-check-input" required>
+            <label class="form-check-label" for="agree" style="font-size:.875rem;color:var(--text-muted);">
+              I agree to the <a href="#" style="color:var(--accent);">Terms &amp; Conditions</a>
+            </label>
+          </div>
+        </div>
+
+        <button class="btn btn-agro w-100 py-2 mb-3" type="submit" id="signupBtn">
+          <i class="fa-solid fa-user-plus me-2"></i>Create Account
+        </button>
+
+        <hr class="auth-divider">
+
+        <div class="text-center" style="font-size:.9rem;color:var(--text-muted);">
+          Already have an account?
+          <a href="{% url 'login' %}" class="fw-700 text-decoration-none ms-1"
+             style="color:var(--accent);">
+            <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+          </a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

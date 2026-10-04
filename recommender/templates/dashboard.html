@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard - AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-chart-line text-success me-2"></i>Farmer Dashboard
+      </h2>
+      <p class="text-secondary mt-1 mb-0">Welcome back, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong></p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'predict' %}" class="btn btn-agro btn-sm">
+        <i class="fa-solid fa-plus me-1"></i>New Prediction
+      </a>
+      <a href="{% url 'history' %}" class="btn btn-outline-success btn-sm">
+        <i class="fa-solid fa-clock-rotate-left me-1"></i>History
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card p-3 text-center h-100">
+        <div class="mb-1" style="font-size:2rem;color:var(--accent-green);">
+          <i class="fa-solid fa-chart-bar"></i>
+        </div>
+        <div class="fw-bold fs-4" style="color:var(--accent-green);">{{ total_predictions }}</div>
+        <div class="small text-secondary">Total Predictions</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card p-3 text-center h-100">
+        <div class="mb-1" style="font-size:2rem;color:#d69e2e;">
+          <i class="fa-solid fa-seedling"></i>
+        </div>
+        <div class="fw-bold fs-5">{{ best_crop|capfirst|default:"N/A" }}</div>
+        <div class="small text-secondary">Most Predicted</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card p-3 text-center h-100">
+        <div class="mb-1" style="font-size:2rem;color:#4299e1;">
+          <i class="fa-solid fa-flask"></i>
+        </div>
+        <div class="fw-bold fs-4" style="color:#4299e1;">{{ avg_soil }}</div>
+        <div class="small text-secondary">Avg Soil Score</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card p-3 text-center h-100">
+        <div class="mb-1" style="font-size:2rem;color:#805ad5;">
+          <i class="fa-solid fa-calendar-check"></i>
+        </div>
+        <div class="fw-bold fs-4" style="color:#805ad5;">{{ days_active }}</div>
+        <div class="small text-secondary">Days Active</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="row g-4 mb-4">
+    <!-- NPK Bar Chart -->
+    <div class="col-md-6">
+      <div class="chart-card">
+        <div class="chart-title"><i class="fa-solid fa-flask me-1"></i>Average NPK Levels</div>
+        <canvas id="npkChart" height="200"></canvas>
+      </div>
+    </div>
+    <!-- Crop Distribution -->
+    <div class="col-md-6">
+      <div class="chart-card">
+        <div class="chart-title"><i class="fa-solid fa-pie-chart me-1"></i>Crop Distribution</div>
+        <canvas id="cropChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="row g-4 mb-4">
+    <!-- Soil Health Timeline -->
+    <div class="col-md-6">
+      <div class="chart-card">
+        <div class="chart-title"><i class="fa-solid fa-chart-line me-1"></i>Soil Health Over Time</div>
+        <canvas id="soilChart" height="200"></canvas>
+      </div>
+    </div>
+    <!-- Latest Top 3 -->
+    <div class="col-md-6">
+      <div class="chart-card">
+        <div class="chart-title"><i class="fa-solid fa-ranking-star me-1"></i>Latest Prediction Probabilities</div>
+        <canvas id="top3Chart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Predictions Table -->
+  <div class="card p-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="fw-bold mb-0" style="color:var(--accent-green);">
+        <i class="fa-solid fa-clock-rotate-left me-1"></i>Recent Predictions
+      </h6>
+      <a href="{% url 'history' %}" class="btn btn-outline-success btn-sm">View All</a>
+    </div>
+
+    {% if recent_5 %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Top Crop</th>
+              <th>N / P / K</th>
+              <th>Temp</th>
+              <th>pH</th>
+              <th>Soil Score</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pred in recent_5 %}
+              <tr>
+                <td><small>{{ pred.created_at|date:"d M Y" }}</small></td>
+                <td>
+                  <span class="fw-bold" style="color:var(--accent-green);">{{ pred.predicted_label|capfirst }}</span>
+                </td>
+                <td><small>{{ pred.N|floatformat:0 }} / {{ pred.P|floatformat:0 }} / {{ pred.K|floatformat:0 }}</small></td>
+                <td><small>{{ pred.temperature|floatformat:1 }}°C</small></td>
+                <td><small>{{ pred.ph|floatformat:1 }}</small></td>
+                <td>
+                  {% if pred.soil_health_score %}
+                    <span class="badge {% if pred.soil_health_score >= 75 %}bg-success{% elif pred.soil_health_score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                      {{ pred.soil_health_score|floatformat:0 }}
+                    </span>
+                  {% else %}
+                    <span class="text-secondary">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'report' pred.pk %}" class="btn btn-sm btn-outline-success" target="_blank">
+                    <i class="fa-solid fa-file-alt"></i>
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-seedling"></i></div>
+        <h5>No predictions yet</h5>
+        <p class="text-secondary">Make your first crop prediction to see data here.</p>
+        <a href="{% url 'predict' %}" class="btn btn-agro mt-2">Start Predicting</a>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Chart Data (JSON) -->
+<script id="chartData" type="application/json">{{ chart_data }}</script>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}

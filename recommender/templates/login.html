@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Login — AgroSense{% endblock %}
+
+{% block content %}
+<div class="auth-viewport">
+
+  <!-- ── Left panel: dark forest green with marketing copy ── -->
+  <div class="auth-left">
+    <div class="auth-left-image"
+         style="background-image:url('{% static 'images/carousel4.png' %}');"></div>
+    <div class="auth-left-content">
+      <h2>Welcome Back<br>to AgroSense</h2>
+      <p>
+        Your AI-powered farming advisor. Log in to access personalised crop
+        recommendations, soil insights, and market data.
+      </p>
+      <ul>
+        <li><i class="fa-solid fa-circle-check"></i>Instant AI crop predictions</li>
+        <li><i class="fa-solid fa-circle-check"></i>Soil health &amp; fertilizer plans</li>
+        <li><i class="fa-solid fa-circle-check"></i>Market prices &amp; yield estimates</li>
+        <li><i class="fa-solid fa-circle-check"></i>Secure &amp; 100% free</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── Right panel: clean login form ── -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+
+      <!-- Logo -->
+      <a class="auth-logo" href="{% url 'home' %}">
+        <span class="leaf-icon"><i class="fa-solid fa-leaf"></i></span>
+        Agro<span class="brand-sense">Sense</span>
+      </a>
+
+      <h2>Sign in</h2>
+      <p class="auth-sub">Enter your credentials to continue</p>
+
+      <!-- Error messages -->
+      {% if messages %}
+        {% for message in messages %}
+          {% if message.tags == 'error' or message.tags == 'danger' %}
+            <div class="auth-error">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              {{ message }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" id="loginForm" novalidate>
+        {% csrf_token %}
+
+        <!-- Email -->
+        <div class="mb-3">
+          <label class="form-label" for="loginEmail">Email</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-regular fa-envelope"></i>
+            </span>
+            <input type="email" id="loginEmail" name="name"
+                   class="form-control"
+                   placeholder="your@email.com"
+                   autocomplete="email" required>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-4">
+          <label class="form-label" for="pwd1">Password</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fa-solid fa-key"></i>
+            </span>
+            <input type="password" id="pwd1" name="password"
+                   class="form-control"
+                   placeholder="Your password"
+                   autocomplete="current-password">
+            <button class="btn btn-pwd-toggle"
+                    type="button" id="togglePwd"
+                    title="Show / hide password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-agro w-100 py-2 mb-3" type="submit" id="loginBtn">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Login
+        </button>
+
+        <hr class="auth-divider">
+
+        <div class="text-center" style="font-size:.9rem;color:var(--text-muted);">
+          New here?
+          <a href="{% url 'signup' %}" class="fw-700 text-decoration-none ms-1"
+             style="color:var(--accent);">
+            <i class="fa-solid fa-user-plus me-1"></i>Create an account
+          </a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

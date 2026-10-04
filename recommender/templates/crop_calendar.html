@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Crop Calendar - AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <h2 class="fw-bold section-title mb-0">
+      <i class="fa-solid fa-calendar-days text-success me-2"></i>Crop Calendar
+    </h2>
+    <p class="text-secondary mt-1">
+      Monthly crop activities. Current season:
+      <span class="season-badge badge-{{ season.name|lower }} ms-1">{{ season.name }}</span>
+    </p>
+  </div>
+
+  <!-- Filter -->
+  <div class="card p-3 mb-4">
+    <div class="d-flex flex-wrap gap-1 align-items-center">
+      <span class="text-secondary small me-2">Filter:</span>
+      <a href="{% url 'crop_calendar' %}"
+         class="btn btn-sm {% if not crop_filter %}btn-success{% else %}btn-outline-success{% endif %}">
+        All Crops
+      </a>
+      {% for crop in all_crops %}
+        <a href="{% url 'crop_calendar' %}?crop={{ crop }}"
+           class="btn btn-sm {% if crop_filter == crop %}btn-success{% else %}btn-outline-success{% endif %}">
+          {{ crop|capfirst }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="d-flex flex-wrap gap-3 mb-4">
+    <span class="d-flex align-items-center gap-1 small">
+      <span style="width:14px;height:14px;border-radius:3px;background:#c6f6d5;display:inline-block;"></span>
+      Sow / Plant
+    </span>
+    <span class="d-flex align-items-center gap-1 small">
+      <span style="width:14px;height:14px;border-radius:3px;background:#bee3f8;display:inline-block;"></span>
+      Fertilize
+    </span>
+    <span class="d-flex align-items-center gap-1 small">
+      <span style="width:14px;height:14px;border-radius:3px;background:#fefcbf;display:inline-block;"></span>
+      Irrigate
+    </span>
+    <span class="d-flex align-items-center gap-1 small">
+      <span style="width:14px;height:14px;border-radius:3px;background:#fed7d7;display:inline-block;"></span>
+      Harvest
+    </span>
+    <span class="d-flex align-items-center gap-1 small">
+      <span style="width:14px;height:14px;border-radius:3px;background:#e9d8fd;display:inline-block;"></span>
+      Manage
+    </span>
+  </div>
+
+  <!-- Calendar for each crop -->
+  {% for crop_name, data in crop_data.items %}
+    <div class="card p-3 mb-4 fade-in-scroll">
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+          <h6 class="fw-bold mb-0">{{ crop_name|capfirst }}</h6>
+          <span class="season-badge badge-{{ data.season|lower }}">{{ data.season }}</span>
+        </div>
+        <div class="text-secondary small">
+          <i class="fa-solid fa-scale-balanced me-1"></i>{{ data.yield_per_hectare }} t/ha &nbsp;
+          <i class="fa-solid fa-indian-rupee-sign me-1"></i>&#8377;{{ data.market_price }}/qtl
+        </div>
+      </div>
+
+      <!-- 12-month grid -->
+      <div class="calendar-grid mb-2">
+        {% for month in months %}
+          <div>
+            <div class="cal-month-header">{{ month }}</div>
+            {% if data.calendar %}
+              {% with activity=data.calendar|default_if_none:"" %}
+                {% for cal_month, cal_activity in data.calendar.items %}
+                  {% if cal_month == month %}
+                    {% if 'sow' in cal_activity|lower or 'plant' in cal_activity|lower or 'seed' in cal_activity|lower or 'nursery' in cal_activity|lower %}
+                      <div class="cal-cell cal-sow" title="{{ cal_activity }}">{{ month }}</div>
+                    {% elif 'fertiliz' in cal_activity|lower %}
+                      <div class="cal-cell cal-fertilize" title="{{ cal_activity }}">{{ month }}</div>
+                    {% elif 'irrig' in cal_activity|lower %}
+                      <div class="cal-cell cal-irrigate" title="{{ cal_activity }}">{{ month }}</div>
+                    {% elif 'harvest' in cal_activity|lower %}
+                      <div class="cal-cell cal-harvest" title="{{ cal_activity }}">{{ month }}</div>
+                    {% else %}
+                      <div class="cal-cell cal-manage" title="{{ cal_activity }}">{{ month }}</div>
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+              {% endwith %}
+            {% else %}
+              <div class="cal-cell cal-idle">-</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Calendar detail list -->
+      {% if data.calendar %}
+        <details>
+          <summary class="text-secondary small" style="cursor:pointer;">
+            <i class="fa-solid fa-list me-1"></i>View Monthly Details
+          </summary>
+          <div class="row g-1 mt-2">
+            {% for month, activity in data.calendar.items %}
+              <div class="col-6 col-md-4 col-lg-3">
+                <div class="p-2 rounded small"
+                     style="background:var(--bg-primary);border:1px solid var(--border-color);">
+                  <strong style="color:var(--accent-green);">{{ month }}</strong>
+                  <div class="text-secondary" style="font-size:.75rem;">{{ activity }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
+    </div>
+  {% empty %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+      <h5>No crop data found</h5>
+      <a href="{% url 'crop_calendar' %}" class="btn btn-agro mt-2">Show All Crops</a>
+    </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

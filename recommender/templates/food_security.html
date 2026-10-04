@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Food Security Index — AgroSense{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-bowl-rice text-success me-2"></i>Food Security Index — India
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Per-capita agricultural production by state. Source: APY dataset (345K rows) ×
+        Census 2011 population.
+        <span class="badge ms-1" style="background:var(--accent-light);color:var(--accent-dark);font-size:.72rem;">
+          {{ total_states }} states
+        </span>
+      </p>
+    </div>
+    <a href="{% url 'corn_comparison' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-scale-balanced me-1"></i>US vs India Corn
+    </a>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+  {% else %}
+
+  <!-- KPI -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid var(--accent)!important;">
+        <div class="text-muted small fw-bold">National Avg Per Capita</div>
+        <div style="font-size:2rem;font-weight:900;color:var(--accent);">{{ nat_avg }}</div>
+        <div class="text-muted" style="font-size:.75rem;">kg / person / year</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #16a34a!important;">
+        <div class="text-muted small fw-bold">Top Surplus State</div>
+        <div style="font-size:1.5rem;font-weight:900;color:#16a34a;">{{ top_surplus.0.0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">{{ top_surplus.0.1|floatformat:0 }} kg/capita</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #dc2626!important;">
+        <div class="text-muted small fw-bold">Most Food-Deficit State</div>
+        <div style="font-size:1.5rem;font-weight:900;color:#dc2626;">{{ top_deficit.0.0 }}</div>
+        <div class="text-muted" style="font-size:.75rem;">{{ top_deficit.0.1|floatformat:0 }} kg/capita</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card p-3 text-center" style="border-left:4px solid #7c3aed!important;">
+        <div class="text-muted small fw-bold">States Analysed</div>
+        <div style="font-size:2rem;font-weight:900;color:#7c3aed;">{{ total_states }}</div>
+        <div class="text-muted" style="font-size:.75rem;">from APY dataset</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bar chart: all states ranked -->
+  <div class="card p-3 mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <h6 class="fw-bold mb-0" style="color:var(--accent);">
+        <i class="fa-solid fa-chart-bar me-1"></i>Per-Capita Agricultural Production by State
+        <span class="text-muted fw-normal" style="font-size:.77rem;">(kg/person/year, annual average)</span>
+      </h6>
+      <!-- State detail selector -->
+      <form method="GET" action="{% url 'food_security' %}" class="d-flex gap-2">
+        <select name="state" class="form-select form-select-sm" style="width:200px;" onchange="this.form.submit()">
+          <option value="">All states</option>
+          {% for s in states %}
+            <option value="{{ s }}" {% if s == selected_state %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+    <div style="position:relative;height:320px;overflow-x:auto;">
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="mt-1 text-muted" style="font-size:.73rem;">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      Dashed line = national average ({{ nat_avg }} kg/capita). States above = food surplus.
+    </div>
+  </div>
+
+  {% if selected_state and state_detail %}
+  <!-- State detail card -->
+  <div class="card p-4 mb-4" style="border-left:4px solid var(--accent)!important;">
+    <h6 class="fw-bold mb-3" style="color:var(--accent);">
+      <i class="fa-solid fa-location-dot me-1"></i>{{ selected_state }} — Detailed View
+    </h6>
+    <div class="row g-3">
+      <div class="col-sm-4">
+        <div class="p-3 rounded" style="background:var(--bg-alt);">
+          <div class="text-muted small">Avg Annual Production</div>
+          <div style="font-size:1.5rem;font-weight:900;color:var(--accent);">
+            {{ state_detail.total_prod|floatformat:0 }}
+          </div>
+          <div class="text-muted" style="font-size:.75rem;">tonnes / year</div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="p-3 rounded" style="background:var(--bg-alt);">
+          <div class="text-muted small">Per Capita</div>
+          <div style="font-size:1.5rem;font-weight:900;
+                      color:{% if state_detail.per_capita_kg >= nat_avg %}#16a34a{% else %}#dc2626{% endif %};">
+            {{ state_detail.per_capita_kg|floatformat:1 }}
+          </div>
+          <div class="text-muted" style="font-size:.75rem;">kg/person/year</div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="p-3 rounded" style="background:var(--bg-alt);">
+          <div class="text-muted small">Surplus Score</div>
+          <div style="font-size:1.5rem;font-weight:900;
+                      color:{% if state_detail.surplus_score >= 1 %}#16a34a{% else %}#dc2626{% endif %};">
+            {{ state_detail.surplus_score|floatformat:2 }}×
+          </div>
+          <div class="text-muted" style="font-size:.75rem;">vs national avg (1.0 = average)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Top surplus & deficit tables -->
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3" style="color:#16a34a;">
+          <i class="fa-solid fa-arrow-trend-up me-1"></i>Top 10 Food Surplus States
+        </h6>
+        {% for state, pc in top_surplus %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="fw-bold text-muted" style="width:20px;font-size:.75rem;">#{{ forloop.counter }}</span>
+          <span class="fw-semibold" style="font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ state }}
+          </span>
+          <div class="progress flex-grow-1" style="height:8px;max-width:100px;">
+            <div class="progress-bar" style="background:#16a34a;width:{% widthratio pc 2000 100 %}%;"></div>
+          </div>
+          <span class="fw-bold" style="color:#16a34a;font-size:.82rem;min-width:60px;text-align:right;">
+            {{ pc|floatformat:0 }} kg
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3" style="color:#dc2626;">
+          <i class="fa-solid fa-arrow-trend-down me-1"></i>Most Food-Deficit States
+          <span class="badge ms-1" style="background:#fee2e2;color:#dc2626;font-size:.65rem;">Needs attention</span>
+        </h6>
+        {% for state, pc in top_deficit %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="fw-bold text-muted" style="width:20px;font-size:.75rem;">#{{ forloop.counter }}</span>
+          <span class="fw-semibold" style="font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ state }}
+          </span>
+          <div class="progress flex-grow-1" style="height:8px;max-width:100px;">
+            <div class="progress-bar" style="background:#dc2626;width:{% widthratio pc 200 100 %}%;"></div>
+          </div>
+          <span class="fw-bold" style="color:#dc2626;font-size:.82rem;min-width:60px;text-align:right;">
+            {{ pc|floatformat:0 }} kg
+          </span>
+        </div>
+        {% endfor %}
+        <div class="mt-2 p-2 rounded" style="background:#fee2e2;font-size:.78rem;color:#7f1d1d;">
+          <i class="fa-solid fa-lightbulb me-1"></i>
+          Low per-capita production can reflect small states, urban populations, or limited arable land —
+          not necessarily food insecurity if they are food importers.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Year trend chart -->
+  <div class="card p-3 mt-4">
+    <h6 class="fw-bold mb-3" style="color:var(--accent);">
+      <i class="fa-solid fa-chart-line me-1"></i>National Agricultural Production Trend
+    </h6>
+    <div style="position:relative;height:200px;">
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div class="mt-1 text-muted" style="font-size:.73rem;">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      Total production (sum of all crops &amp; states) per year from APY.csv. Units: tonnes.
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const BAR_DATA   = {{ bar_chart_json|safe }};
+const TREND_DATA = {{ trend_json|safe }};
+const NAT_AVG    = {{ nat_avg }};
+
+(function(){
+  // Bar chart
+  const bctx = document.getElementById('barChart');
+  if (bctx && BAR_DATA && BAR_DATA.states.length) {
+    const colours = BAR_DATA.values.map(v => v >= NAT_AVG ? '#16a34a99' : '#dc262699');
+    new Chart(bctx, {
+      type: 'bar',
+      data: {
+        labels: BAR_DATA.states,
+        datasets: [{
+          label: 'Per-capita production (kg/yr)',
+          data:  BAR_DATA.values,
+          backgroundColor: colours,
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.y.toFixed(0)} kg/capita`
+            }
+          },
+          annotation: {
+            annotations: {
+              avg: {
+                type: 'line',
+                y: NAT_AVG,
+                borderColor: '#d97706',
+                borderWidth: 1.5,
+                borderDash: [5, 5],
+                label: { content: 'National avg', enabled: true, position: 'end', color: '#d97706', font: { size: 9 } }
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { size: 9 }, maxRotation: 70, minRotation: 45 } },
+          y: { ticks: { font: { size: 10 } } },
+        },
+      },
+    });
+  }
+
+  // Trend line chart
+  const tctx = document.getElementById('trendChart');
+  if (tctx && TREND_DATA && TREND_DATA.years.length) {
+    new Chart(tctx, {
+      type: 'line',
+      data: {
+        labels: TREND_DATA.years,
+        datasets: [{
+          label: 'Total Production (tonnes)',
+          data:  TREND_DATA.values,
+          borderColor: '#1c7a42',
+          backgroundColor: '#1c7a4222',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 12, font: { size: 9 } } },
+          y: { ticks: { font: { size: 9 } } },
+        },
+      },
+    });
+  }
+})();
+</script>
+{% endblock %}

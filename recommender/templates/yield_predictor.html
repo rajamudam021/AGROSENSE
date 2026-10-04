@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Yield Predictor — AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-wheat-awn text-success me-2"></i>Crop Yield Predictor
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Predict how many tonnes per hectare you'll harvest based on your field conditions.
+        <span class="badge ms-1" style="background:var(--accent-light);color:var(--accent-dark);font-size:.72rem;">RF · R²=0.94 · 1M rows</span>
+      </p>
+    </div>
+    <a href="{% url 'global_yield' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-globe me-1"></i>Global Yield
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Form -->
+    <div class="col-lg-5">
+      <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color:var(--accent);">
+          <i class="fa-solid fa-sliders me-1"></i>Field Conditions
+        </h6>
+        <form method="POST" action="{% url 'yield_predictor' %}">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Crop</label>
+              <select name="crop" class="form-select" required>
+                {% for c in opts.crops %}
+                  <option value="{{ c }}" {% if inputs.crop == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Region</label>
+              <select name="region" class="form-select" required>
+                {% for r in opts.regions %}
+                  <option value="{{ r }}" {% if inputs.region == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Soil Type</label>
+              <select name="soil_type" class="form-select" required>
+                {% for s in opts.soils %}
+                  <option value="{{ s }}" {% if inputs.soil_type == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Weather</label>
+              <select name="weather" class="form-select" required>
+                {% for w in opts.weathers %}
+                  <option value="{{ w }}" {% if inputs.weather == w %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Rainfall (mm)</label>
+              <input type="number" name="rainfall" class="form-control"
+                     value="{{ inputs.rainfall|default:'800' }}" min="0" max="5000" step="1" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Temperature (°C)</label>
+              <input type="number" name="temperature" class="form-control"
+                     value="{{ inputs.temperature|default:'25' }}" min="-10" max="50" step="0.1" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Days to Harvest</label>
+              <input type="number" name="days_to_harvest" class="form-control"
+                     value="{{ inputs.days_to_harvest|default:'90' }}" min="30" max="365" step="1" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold d-block">Inputs Used</label>
+              <div class="d-flex gap-3 mt-1">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="fertilizer_used" id="fertChk"
+                         {% if inputs.fertilizer_used %}checked{% endif %}>
+                  <label class="form-check-label" for="fertChk">Fertilizer</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="irrigation_used" id="irrChk"
+                         {% if inputs.irrigation_used %}checked{% endif %}>
+                  <label class="form-check-label" for="irrChk">Irrigation</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-agro w-100 mt-3">
+            <i class="fa-solid fa-chart-line me-2"></i>Predict Yield
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="col-lg-7">
+      {% if error %}
+        <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}</div>
+      {% endif %}
+
+      {% if result %}
+        <!-- Main yield card -->
+        <div class="card p-4 mb-3 text-center" style="border:2px solid var(--accent);">
+          <div class="text-muted small fw-bold mb-1 text-uppercase letter-spacing">Predicted Yield</div>
+          <div style="font-size:4rem;font-weight:900;color:var(--accent);line-height:1;">
+            {{ result.yield }}
+          </div>
+          <div class="text-muted fw-semibold">tonnes / hectare</div>
+          <div class="d-flex justify-content-center gap-4 mt-3">
+            <div>
+              <div class="text-muted" style="font-size:.75rem;">Low estimate</div>
+              <div class="fw-bold" style="color:#d97706;">{{ result.low }} t/ha</div>
+            </div>
+            <div style="border-left:1px solid var(--border);padding-left:1rem;">
+              <div class="text-muted" style="font-size:.75rem;">High estimate</div>
+              <div class="fw-bold" style="color:#059669;">{{ result.high }} t/ha</div>
+            </div>
+            <div style="border-left:1px solid var(--border);padding-left:1rem;">
+              <div class="text-muted" style="font-size:.75rem;">1 ha → kg</div>
+              <div class="fw-bold" style="color:#2563eb;">{{ result.land_1ha_kg|floatformat:0 }} kg</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confidence range bar -->
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-2" style="color:var(--accent);">Prediction Range</h6>
+          <div class="position-relative" style="height:32px;background:var(--bg-alt);border-radius:.5rem;overflow:hidden;">
+            {% with span=result.high|add:result.low %}
+            <div style="position:absolute;left:0;top:0;height:100%;width:{% widthratio result.low result.high 100 %}%;background:#fde68a;"></div>
+            <div style="position:absolute;height:100%;background:var(--accent);opacity:.85;border-radius:.4rem;
+                        left:{% widthratio result.low result.high 100 %}%;
+                        width:{% widthratio result.std result.high 100 %}%;">
+            </div>
+            {% endwith %}
+          </div>
+          <div class="d-flex justify-content-between mt-1" style="font-size:.75rem;color:var(--text-muted);">
+            <span>{{ result.low }} t/ha</span>
+            <span class="fw-bold" style="color:var(--accent);">{{ result.yield }} t/ha</span>
+            <span>{{ result.high }} t/ha</span>
+          </div>
+        </div>
+
+        <!-- Condition summary -->
+        <div class="card p-3">
+          <h6 class="fw-bold mb-2" style="color:var(--accent);">Input Summary</h6>
+          <div class="row g-2">
+            {% for label, val in result.inputs.items %}
+            <div class="col-6 col-md-4">
+              <div class="p-2 rounded" style="background:var(--bg-alt);border:1px solid var(--border);font-size:.82rem;">
+                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">{{ label|cut:"_" }}</div>
+                <div class="fw-semibold">
+                  {% if val == True %}Yes{% elif val == False %}No{% else %}{{ val }}{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mt-3 d-flex gap-2 flex-wrap">
+            <a href="{% url 'cost_calculator' %}?crop={{ result.inputs.crop }}" class="btn btn-outline-agro btn-sm">
+              <i class="fa-solid fa-calculator me-1"></i>Cost Calculator
+            </a>
+            <a href="{% url 'fertilizer' %}" class="btn btn-outline-agro btn-sm">
+              <i class="fa-solid fa-bottle-droplet me-1"></i>Fertilizer Advisor
+            </a>
+          </div>
+        </div>
+
+      {% else %}
+        <div class="card p-5 text-center" style="min-height:380px;display:flex;align-items:center;justify-content:center;">
+          <div class="empty-state">
+            <div class="empty-state-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+            <h5>Enter field conditions to predict yield</h5>
+            <p class="text-muted">
+              Our Random Forest model trained on 1,000,000 crop yield records will estimate
+              your expected harvest in tonnes per hectare with a confidence range.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

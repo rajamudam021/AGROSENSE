@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Market Prices - AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <h2 class="fw-bold section-title mb-0">
+      <i class="fa-solid fa-chart-bar text-success me-2"></i>Market Prices
+    </h2>
+    <p class="text-secondary mt-1">
+      Indicative MSP and market prices for major crops.
+      <span class="text-muted small">Last updated: March 2026</span>
+    </p>
+  </div>
+
+  <!-- Category Filter Buttons -->
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <button class="btn btn-success btn-sm active" data-filter-btn="all">All</button>
+    <button class="btn btn-outline-success btn-sm" data-filter-btn="Cereal">Cereals</button>
+    <button class="btn btn-outline-success btn-sm" data-filter-btn="Pulse">Pulses</button>
+    <button class="btn btn-outline-success btn-sm" data-filter-btn="Cash Crop">Cash Crops</button>
+    <button class="btn btn-outline-success btn-sm" data-filter-btn="Fruit">Fruits</button>
+  </div>
+
+  <!-- Price Cards Grid -->
+  <div class="row g-3 mb-5" id="priceCards">
+    {% for item in market_prices %}
+      <div class="col-6 col-md-4 col-lg-3" data-filter-item="{{ item.category }}">
+        <div class="price-card">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="fw-bold mb-0">{{ item.crop }}</h6>
+            <span class="badge" style="background:var(--bg-primary);color:var(--text-secondary);font-size:.7rem;">
+              {{ item.category }}
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5 fw-bold" style="color:var(--accent-green);">
+              &#8377;{{ item.price|floatformat:0 }}
+            </span>
+            <span class="text-secondary small">/{{ item.unit }}</span>
+          </div>
+          <div class="mt-1">
+            {% if item.trend == 'up' %}
+              <span class="price-trend-up small"><i class="fa-solid fa-arrow-trend-up me-1"></i>Rising</span>
+            {% elif item.trend == 'down' %}
+              <span class="price-trend-down small"><i class="fa-solid fa-arrow-trend-down me-1"></i>Falling</span>
+            {% else %}
+              <span class="price-trend-stable small"><i class="fa-solid fa-arrows-left-right me-1"></i>Stable</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Price Comparison Chart -->
+  <div class="card p-3 mb-4">
+    <h6 class="fw-bold mb-3" style="color:var(--accent-green);">
+      <i class="fa-solid fa-chart-bar me-1"></i>Price Comparison (INR/Quintal)
+    </h6>
+    <canvas id="marketChart" height="120"
+            data-labels='{% autoescape off %}[{% for item in market_prices %}"{{ item.crop }}"{% if not forloop.last %},{% endif %}{% endfor %}]{% endautoescape %}'
+            data-prices='{% autoescape off %}[{% for item in market_prices %}{{ item.price }}{% if not forloop.last %},{% endif %}{% endfor %}]{% endautoescape %}'>
+    </canvas>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="alert alert-info">
+    <i class="fa-solid fa-circle-info me-2"></i>
+    <strong>Disclaimer:</strong> Prices shown are indicative MSP (Minimum Support Price) and approximate market rates.
+    Actual market prices may vary by region, quality, and season. Please verify with your local mandi or APMC.
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}

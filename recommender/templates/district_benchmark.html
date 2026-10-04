@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}District Benchmark — AgroSense{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 px-lg-5 py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold section-title mb-0">
+        <i class="fa-solid fa-map-location-dot text-success me-2"></i>District Yield Benchmark
+      </h2>
+      <p class="text-secondary mt-1 mb-0">
+        Compare historical crop yield data for any district across India (1997–2015).
+      </p>
+    </div>
+    <a href="{% url 'trends' %}" class="btn btn-outline-agro btn-sm">
+      <i class="fa-solid fa-chart-line me-1"></i>India Trends
+    </a>
+  </div>
+
+  <!-- Filter form -->
+  <div class="card p-3 mb-4">
+    <form method="GET" action="{% url 'district_benchmark' %}" id="benchForm" class="row g-3 align-items-end">
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label fw-semibold">State</label>
+        <select name="state" id="stateSelect" class="form-select" required>
+          <option value="">-- Select state --</option>
+          {% for s in states %}
+            <option value="{{ s }}" {% if selected_state == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label fw-semibold">District</label>
+        <select name="district" id="districtSelect" class="form-select" required>
+          <option value="">-- Select district --</option>
+          {% for d in districts %}
+            <option value="{{ d }}" {% if selected_district == d %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label fw-semibold">Crop</label>
+        <select name="crop" class="form-select" required>
+          <option value="">-- Select crop --</option>
+          {% for c in all_crops %}
+            <option value="{{ c }}" {% if selected_crop == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <button type="submit" class="btn btn-agro w-100">
+          <i class="fa-solid fa-chart-bar me-2"></i>View Benchmark
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if benchmark %}
+    <div class="row g-4">
+      <!-- Stat cards -->
+      <div class="col-lg-8">
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card p-3 text-center" style="border-left:4px solid var(--accent)!important;">
+              <div class="text-muted small fw-bold mb-1">Avg Yield</div>
+              <div class="fw-black" style="font-size:1.6rem;color:var(--accent);">
+                {{ benchmark.avg_yield|floatformat:2 }}
+              </div>
+              <div class="text-muted" style="font-size:.75rem;">tonnes / ha</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card p-3 text-center" style="border-left:4px solid #d97706!important;">
+              <div class="text-muted small fw-bold mb-1">Peak Yield</div>
+              <div class="fw-black" style="font-size:1.6rem;color:#d97706;">
+                {{ benchmark.max_yield|floatformat:2 }}
+              </div>
+              <div class="text-muted" style="font-size:.75rem;">tonnes / ha</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card p-3 text-center" style="border-left:4px solid #2563eb!important;">
+              <div class="text-muted small fw-bold mb-1">Avg Production</div>
+              <div class="fw-black" style="font-size:1.4rem;color:#2563eb;">
+                {{ benchmark.avg_prod|floatformat:0 }}
+              </div>
+              <div class="text-muted" style="font-size:.75rem;">tonnes / year</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card p-3 text-center" style="border-left:4px solid #7c3aed!important;">
+              <div class="text-muted small fw-bold mb-1">Avg Area</div>
+              <div class="fw-black" style="font-size:1.4rem;color:#7c3aed;">
+                {{ benchmark.avg_area|floatformat:0 }}
+              </div>
+              <div class="text-muted" style="font-size:.75rem;">hectares / year</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Yield performance bar -->
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-gauge me-1"></i>Yield Performance
+          </h6>
+          {% if benchmark.avg_yield and benchmark.max_yield %}
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="small fw-semibold">Average Yield</span>
+                <span class="small fw-bold" style="color:var(--accent);">{{ benchmark.avg_yield|floatformat:2 }} t/ha</span>
+              </div>
+              <div class="progress" style="height:12px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width:{% widthratio benchmark.avg_yield benchmark.max_yield 100 %}%;background:var(--accent);">
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="d-flex justify-content-between mb-1">
+                <span class="small fw-semibold">Peak Yield</span>
+                <span class="small fw-bold" style="color:#d97706;">{{ benchmark.max_yield|floatformat:2 }} t/ha</span>
+              </div>
+              <div class="progress" style="height:12px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width:100%;background:#d97706;">
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 p-2 rounded" style="background:var(--bg-alt);font-size:.82rem;color:var(--text-muted);">
+              <i class="fa-solid fa-info-circle me-1"></i>
+              Average yield is
+              <strong style="color:var(--accent);">{{ benchmark.avg_yield|floatformat:2 }} t/ha</strong>
+              vs peak of
+              <strong style="color:#d97706;">{{ benchmark.max_yield|floatformat:2 }} t/ha</strong>.
+              There is potential to raise yields by improving inputs and management practices.
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Action links -->
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'trends' %}?crop={{ selected_crop }}" class="btn btn-outline-agro btn-sm">
+            <i class="fa-solid fa-chart-line me-1"></i>National Trend for {{ selected_crop }}
+          </a>
+          <a href="{% url 'cost_calculator' %}?crop={{ selected_crop }}" class="btn btn-outline-agro btn-sm">
+            <i class="fa-solid fa-calculator me-1"></i>Cost Calculator
+          </a>
+          <a href="{% url 'fertilizer' %}" class="btn btn-outline-agro btn-sm">
+            <i class="fa-solid fa-bottle-droplet me-1"></i>Fertilizer Advisor
+          </a>
+        </div>
+      </div>
+
+      <!-- Side summary -->
+      <div class="col-lg-4">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3" style="color:var(--accent);">
+            <i class="fa-solid fa-circle-info me-1"></i>Summary
+          </h6>
+          <ul class="list-unstyled mb-0" style="font-size:.9rem;line-height:2.4;">
+            <li><i class="fa-solid fa-location-dot me-2 text-success"></i><strong>District:</strong> {{ selected_district }}</li>
+            <li><i class="fa-solid fa-map me-2 text-success"></i><strong>State:</strong> {{ selected_state }}</li>
+            <li><i class="fa-solid fa-seedling me-2 text-success"></i><strong>Crop:</strong> {{ selected_crop }}</li>
+            <li><i class="fa-solid fa-calendar me-2 text-success"></i><strong>Period:</strong> {{ benchmark.years }}</li>
+            <li><i class="fa-solid fa-database me-2 text-success"></i><strong>Data points:</strong> {{ benchmark.data_points }}</li>
+            <li><i class="fa-solid fa-chart-simple me-2 text-success"></i><strong>Avg Yield:</strong> {{ benchmark.avg_yield|floatformat:2 }} t/ha</li>
+            <li><i class="fa-solid fa-trophy me-2 text-warning"></i><strong>Peak Yield:</strong> {{ benchmark.max_yield|floatformat:2 }} t/ha</li>
+            <li><i class="fa-solid fa-ruler-combined me-2 text-success"></i><strong>Avg Area:</strong> {{ benchmark.avg_area|floatformat:0 }} ha</li>
+          </ul>
+        </div>
+
+        <div class="card p-3">
+          <h6 class="fw-bold mb-2" style="color:var(--accent);">
+            <i class="fa-solid fa-lightbulb me-1"></i>Insights
+          </h6>
+          <p style="font-size:.85rem;color:var(--text-muted);line-height:1.7;">
+            {% if benchmark.avg_yield > 2.5 %}
+              This district shows <strong>strong yield performance</strong> for {{ selected_crop }}.
+              Focus on maintaining soil health and efficient water use to sustain these levels.
+            {% elif benchmark.avg_yield > 1 %}
+              <strong>Moderate yields</strong> suggest room for improvement. Consider precision
+              fertilization, improved seed varieties, and better irrigation management.
+            {% else %}
+              Yields are below the national benchmark. Prioritise soil testing,
+              access to high-yielding varieties, and reliable irrigation.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+  {% elif selected_state and selected_district and selected_crop %}
+    <div class="card p-5 text-center">
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h5>No data found</h5>
+        <p class="text-muted">No records for <strong>{{ selected_crop }}</strong> in
+          <strong>{{ selected_district }}, {{ selected_state }}</strong>. Try another combination.</p>
+      </div>
+    </div>
+  {% else %}
+    <div class="card p-5 text-center" style="min-height:400px;">
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+        <h5>Select State, District &amp; Crop</h5>
+        <p class="text-muted">
+          Explore historical yield data for any district across India.
+          Data covers 1997–2015 from the APY (Area, Production, Yield) dataset with 345,000+ records.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('stateSelect').addEventListener('change', function() {
+  const state   = this.value;
+  const distSel = document.getElementById('districtSelect');
+  distSel.innerHTML = '<option value="">Loading...</option>';
+
+  if (!state) {
+    distSel.innerHTML = '<option value="">-- Select district --</option>';
+    return;
+  }
+
+  fetch(`{% url 'ajax_districts' %}?state=${encodeURIComponent(state)}`)
+    .then(r => r.json())
+    .then(data => {
+      distSel.innerHTML = '<option value="">-- Select district --</option>';
+      data.districts.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        distSel.appendChild(opt);
+      });
+    })
+    .catch(() => {
+      distSel.innerHTML = '<option value="">Error loading districts</option>';
+    });
+});
+</script>
+{% endblock %}
